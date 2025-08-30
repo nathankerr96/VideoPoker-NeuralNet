@@ -1,23 +1,24 @@
-TARGET = main
+TARGET = a.out
 LIBS = -lm
 CC = g++
 CFLAGS = -g -Wall
+BINDIR = bin
 
 .PHONY: default all clean
 
 default: $(TARGET)
 all: default
 
-OBJECTS = $(patsubst %.cc, %.o, $(wildcard *.cc))
+OBJECTS = $(patsubst %.cc, $(BINDIR)/%.o, $(wildcard *.cc))
 HEADERS = $(wildcard *.h)
 
-%.o: %.cc $(HEADERS)
+$(BINDIR)/%.o: %.cc $(HEADERS)
 	$(CC) $(CFLAGS) -c $< -o $@
 
 .PRECIOUS: $(TARGET) $(OBJECTS)
 
 $(TARGET): $(OBJECTS)
-	$(CC) $(OBJECTS) -Wall $(LIBS) -o $@
+	$(CC) $(OBJECTS) -Wall $(LIBS) -o $(BINDIR)/$@
 
 clean:
 	-rm -f *.o
