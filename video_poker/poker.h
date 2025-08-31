@@ -67,6 +67,7 @@ public:
     const Hand& deal();
     const Hand& exchange(bool e1, bool e2, bool e3, bool e4, bool e5);
     PokerHand getHandType(const Hand& hand);
+    int score(PokerHand handType);
 
 private:
     Deck mDeck;

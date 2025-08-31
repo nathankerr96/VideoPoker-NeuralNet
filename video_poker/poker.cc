@@ -176,3 +176,20 @@ PokerHand VideoPoker::getHandType(const Hand& hand) {
     if (hasPair) return PokerHand::PAIR;
     return PokerHand::HIGH_CARD;
 }
+
+int VideoPoker::score(PokerHand handType) {
+    switch(handType) {
+        case PokerHand::ROYAL_FLUSH: return 800;
+        case PokerHand::STRAIGHT_FLUSH: return 40;
+        case PokerHand::FOUR_OF_A_KIND: return 20;
+        case PokerHand::FULL_HOUSE: return 9;
+        case PokerHand::FLUSH: return 6;
+        case PokerHand::STRAIGHT: return 5;
+        case PokerHand::THREE_OF_A_KIND: return 3;
+        case PokerHand::TWO_PAIR: return 2;
+        case PokerHand::HIGH_PAIR: return 1;
+        case PokerHand::PAIR: return 0;
+        case PokerHand::HIGH_CARD: return 0;
+        default: throw std::runtime_error("Invalid Hand");
+    }
+}

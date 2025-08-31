@@ -60,6 +60,20 @@ void testHands() {
     }
 }
 
+void test_scoring() {
+    VideoPoker vp{};
+    int total = 0;
+    for (int i = 0; i < 1000; i++) {
+        Hand h = vp.deal();
+        total -= 1;
+        h = vp.exchange(true, true, false, false, false);
+        int score = vp.score(vp.getHandType(h));
+        total += score;
+        std::cout << h << "Score: " << score << ", Total: " << total << std::endl;
+
+    }
+}
+
 void test_royal_flush() {
     VideoPoker vp {};
     Hand h;
@@ -82,9 +96,10 @@ void run_tests() {
     testShuffle();
     testCardOstream();
     testVideoPokerHand();
+    test_royal_flush();
 
     // testHands();
-    test_royal_flush();
+    // test_scoring();
     std::cout << "All tests passed!" << std::endl;
 }
 
