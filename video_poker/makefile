@@ -9,10 +9,10 @@ BINDIR = bin
 default: $(TARGET)
 all: default
 
-APP_SOURCES = main.cc poker.cc neural.cc
+APP_SOURCES = main.cc poker.cc neural.cc activations.cc
 APP_OBJECTS = $(patsubst %.cc, $(BINDIR)/%.o, $(APP_SOURCES))
 
-HEADERS = poker.h neural.h
+HEADERS = poker.h neural.h activations.h
 
 $(BINDIR)/%.o: %.cc $(HEADERS)
 	@mkdir -p $(BINDIR)
@@ -31,7 +31,7 @@ test_poker:
 	$(POKER_TEST_RUNNER)
 
 test_neural:
-	$(CC) $(CFLAGS) -o $(NEURAL_TEST_RUNNER) neural.cc neural_test.cc
+	$(CC) $(CFLAGS) -o $(NEURAL_TEST_RUNNER) neural.cc neural_test.cc activations.cc
 	$(NEURAL_TEST_RUNNER)
 
 clean:

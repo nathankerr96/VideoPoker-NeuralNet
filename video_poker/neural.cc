@@ -4,8 +4,15 @@
 #include <memory>
 #include <stdexcept>
 #include <cmath>
+#include <functional>
 
-Neuron::Neuron(int num_inputs) : mBias(0) {
+
+Neuron::Neuron(int num_inputs, 
+               std::function<float(float)> activation, 
+               std::function<float(float)> activation_derivative) 
+               : mBias(0),
+                 mActivation(activation),
+                 mActivationDerivative(activation_derivative) {
     std::random_device rd;
     std::mt19937 generator(rd());
     std::uniform_real_distribution<float> dis(-1.0, 1.0);
@@ -22,21 +29,19 @@ void Neuron::fire(const std::vector<float>& inputs) {
     for (size_t i = 0; i < inputs.size(); i++) {
         sum += inputs[i] * mWeights[i];
     }
-    mOutput = activate(sum);
+    mOutput = mActivation(sum);
 }
 
 float Neuron::getOutput() {
     return mOutput;
 }
 
-float Neuron::activate(float x) {
-    // Sigmoid function: [0,1]
-    return 1.0f / (1.0f + std::exp(-x));
-}
-
-Layer::Layer(int num_neurons, int num_inputs) {
+Layer::Layer(int num_neurons, 
+             int num_inputs,
+             std::function<float(float)> activation, 
+             std::function<float(float)> activation_derivative) {
     for (int i = 0; i < num_neurons; i++) {
-        mNeurons.push_back(Neuron(num_inputs));
+        mNeurons.push_back(Neuron(num_inputs, activation, activation_derivative));
     }
     mOutputs.resize(num_neurons);
 }
@@ -52,9 +57,12 @@ const std::vector<float>& Layer::getOutputs() const {
     return mOutputs;
 }
 
-NeuralNet::NeuralNet(const std::vector<int>& topology) {
+NeuralNet::NeuralNet(const std::vector<LayerSpecification>& topology) {
     for (size_t i = 1; i < topology.size(); i++) {
-        mLayers.push_back(Layer(topology[i], topology[i-1]));
+        mLayers.push_back(Layer(topology[i].numNeurons, 
+                                topology[i-1].numNeurons, 
+                                topology[i].activation, 
+                                topology[i].activation_derivative));
     }
 }
 
