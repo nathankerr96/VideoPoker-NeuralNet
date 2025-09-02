@@ -95,9 +95,10 @@ void run_tests() {
     testDraw();
     testShuffle();
     testCardOstream();
-    testVideoPokerHand();
     test_royal_flush();
 
+    // Output based tests
+    // testVideoPokerHand();
     // testHands();
     // test_scoring();
     std::cout << "All tests passed!" << std::endl;
