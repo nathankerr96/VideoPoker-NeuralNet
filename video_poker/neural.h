@@ -57,6 +57,7 @@ public:
     NeuralNet(const std::vector<LayerSpecification>& topology);
     void feedForward(const std::vector<float>& inputs);
     void backpropagate(const std::vector<float>& errors);
+    void update(float learningRate);
     const std::vector<float>& getOutputs() const;
 
     friend std::ostream& operator<<(std::ostream& os, const NeuralNet& net);

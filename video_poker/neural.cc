@@ -123,10 +123,11 @@ void NeuralNet::backpropagate(const std::vector<float>& errors) {
     for (int i = mLayers.size()-2; i >= 0; i--) {
         mLayers[i].backpropagate(mLayers[i+1].getBlame());
     }
+}
 
-    // TODO: Implement batching here
+void NeuralNet::update(float learningRate) {
     for (int i = mLayers.size()-1; i >= 0; i--) {
-        mLayers[i].update(0.01f);
+        mLayers[i].update(learningRate);
     }
 }
 
