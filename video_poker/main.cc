@@ -1,6 +1,85 @@
+#include "neural.h"
+#include "activations.h"
+#include "poker.h"
+
 #include <iostream>
+#include <random>
+#include <vector>
+
+#define INPUT_SIZE 85
+
+std::vector<float> translateHand(Hand hand) {
+    std::vector<float> ret(INPUT_SIZE, 0.0f);
+    for (int i=0; i < 5; i++) {
+        Card c = hand[i];
+        ret[(i*17)+c.suit] = 1.0f;
+        ret[(i*17)+4+(c.rank-2)] = 1.0f;
+    }
+    return ret;
+}
+
+void printErrors(const std::vector<float>& errors) {
+    std::cout << "Errors: [";
+    for (float e : errors) {
+        std::cout << e << ", ";
+    }
+    std::cout << "]" << std::endl;
+}
+
+void runGame(VideoPoker& vp, NeuralNet& nn) {
+    std::mt19937 mRandomGenerator {2242};
+    std::uniform_real_distribution<float> uniform_zero_to_one {0.0f, 1.0f};
+    int total_score = 0;
+    int games_played = 0;
+    
+    for (int i = 0; i < 100000; i++) {
+        Hand h = vp.deal();
+        std::cout << "Starting Hand: " << h << std::endl;
+        std::vector<float> input = translateHand(h);
+        nn.feedForward(input);
+        const std::vector<float>& output = nn.getOutputs();
+        std::cout << nn << std::endl;
+        std::vector<bool> exchanges {
+            output[0] > uniform_zero_to_one(mRandomGenerator),
+            output[1] > uniform_zero_to_one(mRandomGenerator),
+            output[2] > uniform_zero_to_one(mRandomGenerator),
+            output[3] > uniform_zero_to_one(mRandomGenerator),
+            output[4] > uniform_zero_to_one(mRandomGenerator)
+        };
+        h = vp.exchange(exchanges);
+        std::cout << "Ending Hand: " << h << std::endl;
+
+        int score = vp.score(vp.getHandType(h));
+        total_score += score;
+        games_played += 1;
+        float average_score = float(total_score) / games_played;
+        std::cout << "Score: " << score <<  ", Games Played: " << games_played << ", Average Score: " << average_score << std::endl;
+
+        std::vector<float> errors {
+            (exchanges[0] - output[0]) * (score - average_score),
+            (exchanges[1] - output[1]) * (score - average_score),
+            (exchanges[2] - output[2]) * (score - average_score),
+            (exchanges[3] - output[3]) * (score - average_score),
+            (exchanges[4] - output[4]) * (score - average_score),
+        };
+        printErrors(errors);
+        nn.backpropagate(errors);
+    }
+}
 
 int main() {
-    std::cout << "Hello, World!" << std::endl;
+    std::vector<LayerSpecification> topology {
+        {INPUT_SIZE, nullptr, nullptr},
+        {200, relu, relu_derivative},
+        {200, relu, relu_derivative},
+        {200, relu, relu_derivative},
+        {200, relu, relu_derivative},
+        {200, relu, relu_derivative},
+        {200, relu, relu_derivative},
+        {5, sigmoid, sigmoid_derivative},
+    };
+    NeuralNet nn {topology};
+    VideoPoker vp {};
+    runGame(vp, nn);
     return 0;
 }

@@ -108,14 +108,14 @@ const Hand& VideoPoker::deal() {
     return mHand;
 }
 
-const Hand& VideoPoker::exchange(bool e1, bool e2, bool e3, bool e4, bool e5) {
+const Hand& VideoPoker::exchange(const std::vector<bool>& ex) {
     if (!mInProgress) throw std::runtime_error("Exchange called while and not in progress.");
     mInProgress = false;
-    if (e1) mHand[0] = mDeck.draw();
-    if (e2) mHand[1] = mDeck.draw();
-    if (e3) mHand[2] = mDeck.draw();
-    if (e4) mHand[3] = mDeck.draw();
-    if (e5) mHand[4] = mDeck.draw();
+    if (ex[0]) mHand[0] = mDeck.draw();
+    if (ex[1]) mHand[1] = mDeck.draw();
+    if (ex[2]) mHand[2] = mDeck.draw();
+    if (ex[3]) mHand[3] = mDeck.draw();
+    if (ex[4]) mHand[4] = mDeck.draw();
     return mHand;
 }
 

@@ -1,14 +1,10 @@
 #include "neural.h"
+#include "activations.h"
 
 #include <iostream>
 #include <cassert>
 #include <vector>
 #include <cmath>
-
-float sigmoid(float x) {
-    // Sigmoid function: [0,1]
-    return 1.0f / (1.0f + std::exp(-x));
-}
 
 // Test the feed-forward functionality of the NeuralNet.
 void test_feed_forward() {

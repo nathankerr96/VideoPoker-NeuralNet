@@ -65,7 +65,7 @@ std::ostream& operator<<(std::ostream& os, const Hand& hand);
 class VideoPoker {
 public:
     const Hand& deal();
-    const Hand& exchange(bool e1, bool e2, bool e3, bool e4, bool e5);
+    const Hand& exchange(const std::vector<bool>& ex);
     PokerHand getHandType(const Hand& hand);
     int score(PokerHand handType);
 

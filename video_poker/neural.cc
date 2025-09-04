@@ -6,20 +6,21 @@
 #include <cmath>
 #include <functional>
 
-
 Neuron::Neuron(int num_inputs, 
                std::function<float(float)> activation, 
                std::function<float(float)> activation_derivative) 
                : mBias(0),
                  mActivation(activation),
-                 mActivationDerivative(activation_derivative) {
+                 mActivationDerivative(activation_derivative),
+                 mWeightChanges(std::vector<float>(num_inputs, 0.0f)),
+                 mBlame(std::vector<float>(num_inputs, 0.0f)) {
     std::random_device rd;
     std::mt19937 generator(rd());
     std::uniform_real_distribution<float> dis(-1.0, 1.0);
 
     mWeights.reserve(num_inputs);
     for (int i = 0; i < num_inputs; i++) {
-        mWeights.push_back(dis(generator));
+        mWeights.push_back(dis(generator) / sqrt(num_inputs));
     }
 }
 
@@ -32,14 +33,36 @@ void Neuron::fire(const std::vector<float>& inputs) {
     mOutput = mActivation(sum);
 }
 
-float Neuron::getOutput() {
+void Neuron::backpropagate(float error, const std::vector<float>& inputs) {
+    float gradient = error * mActivationDerivative(mOutput);
+    for (size_t i = 0; i < mWeights.size(); i++) {
+        mBlame[i] = mWeights[i] * gradient;
+    }
+    for (size_t i = 0; i < mWeights.size(); i++) {
+        mWeightChanges[i] += gradient * inputs[i];
+    }
+}
+
+void Neuron::update(float learningRate) {
+    for (size_t i = 0; i < mWeights.size(); i++) {
+        mWeights[i] = mWeights[i] - (learningRate * mWeightChanges[i]);
+    }
+    std::fill(mWeightChanges.begin(), mWeightChanges.end(), 0);
+}
+
+float Neuron::getOutput() const {
     return mOutput;
+}
+
+const std::vector<float>& Neuron::getBlame() const {
+    return mBlame;
 }
 
 Layer::Layer(int num_neurons, 
              int num_inputs,
              std::function<float(float)> activation, 
-             std::function<float(float)> activation_derivative) {
+             std::function<float(float)> activation_derivative) 
+             : mBlame(std::vector<float>(num_inputs, 0.0f)) {
     for (int i = 0; i < num_neurons; i++) {
         mNeurons.push_back(Neuron(num_inputs, activation, activation_derivative));
     }
@@ -47,14 +70,36 @@ Layer::Layer(int num_neurons,
 }
 
 void Layer::fire(const std::vector<float>& inputs) {
+    mLastInputs = inputs;
     for (size_t i = 0; i < mNeurons.size(); i++) {
         mNeurons[i].fire(inputs);
         mOutputs[i] = mNeurons[i].getOutput();
     }
 }
 
+void Layer::backpropagate(const std::vector<float>& errors) {
+    for (size_t i = 0; i < mNeurons.size(); i++) {
+        mNeurons[i].backpropagate(errors[i], mLastInputs);
+        const std::vector<float>& neuronBlame = mNeurons[i].getBlame();
+        for (size_t j = 0; j < mBlame.size(); j++) {
+            mBlame[j] += neuronBlame[j];
+        }
+    }
+}
+
+void Layer::update(float learningRate) {
+    for (Neuron& n : mNeurons) {
+        n.update(learningRate);
+    }
+    std::fill(mBlame.begin(), mBlame.end(), 0);
+}
+
 const std::vector<float>& Layer::getOutputs() const {
     return mOutputs;
+}
+
+const std::vector<float>& Layer::getBlame() const {
+    return mBlame;
 }
 
 NeuralNet::NeuralNet(const std::vector<LayerSpecification>& topology) {
@@ -70,6 +115,18 @@ void NeuralNet::feedForward(const std::vector<float>& inputs) {
     mLayers[0].fire(inputs);
     for (size_t i = 1; i < mLayers.size(); i++) {
         mLayers[i].fire(mLayers[i-1].getOutputs());
+    }
+}
+
+void NeuralNet::backpropagate(const std::vector<float>& errors) {
+    mLayers[mLayers.size()-1].backpropagate(errors);
+    for (int i = mLayers.size()-2; i >= 0; i--) {
+        mLayers[i].backpropagate(mLayers[i+1].getBlame());
+    }
+
+    // TODO: Implement batching here
+    for (int i = mLayers.size()-1; i >= 0; i--) {
+        mLayers[i].update(0.01f);
     }
 }
 

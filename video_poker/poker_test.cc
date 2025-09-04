@@ -35,7 +35,7 @@ void testVideoPokerHand() {
     VideoPoker vp{};
     const Hand& hand = vp.deal();
     std::cout << hand << std::endl;
-    vp.exchange(true, false, true, true, false);
+    vp.exchange({true, false, true, true, false});
     std::cout << hand << std::endl;
 }
 
@@ -50,7 +50,7 @@ void testHands() {
             max_value = vp.getHandType(h);
             std::cout << "Max: " << max_hand << ": " << max_value << ", i:" << i << std::endl;
         }
-        h = vp.exchange(true, true, false, false, false);
+        h = vp.exchange({true, true, false, false, false});
         // std::cout << h << ": " << vp.getHandType(h) << std::endl;
         if (vp.getHandType(h) >= max_value){
             max_hand = h;
@@ -66,7 +66,7 @@ void test_scoring() {
     for (int i = 0; i < 1000; i++) {
         Hand h = vp.deal();
         total -= 1;
-        h = vp.exchange(true, true, false, false, false);
+        h = vp.exchange({true, true, false, false, false});
         int score = vp.score(vp.getHandType(h));
         total += score;
         std::cout << h << "Score: " << score << ", Total: " << total << std::endl;
