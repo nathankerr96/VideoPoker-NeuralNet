@@ -60,6 +60,7 @@ public:
     void update(float learningRate);
     const std::vector<float>& getOutputs() const;
 
+    void printOutput();
     friend std::ostream& operator<<(std::ostream& os, const NeuralNet& net);
 private:
     std::vector<Layer> mLayers;

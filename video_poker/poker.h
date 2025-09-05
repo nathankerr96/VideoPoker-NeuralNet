@@ -53,7 +53,8 @@ private:
 
 class Hand {
 public:
-    Hand();
+    Hand() {}
+    Hand(std::array<Card, 5> h) : mHand(h) {};
     Card& operator[](int index);
     const Card& operator[](int index) const;
 private:

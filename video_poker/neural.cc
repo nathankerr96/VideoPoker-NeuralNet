@@ -150,6 +150,14 @@ int Layer::getNumNeurons() const {
     return mNeurons.size();
 }
 
+void NeuralNet::printOutput() {
+    std::cout << "[";
+    for (float f : mLayers.back().getOutputs()) {
+        std::cout << f << ", ";
+    }
+    std::cout << "]";
+}
+
 std::ostream& operator<<(std::ostream& os, const NeuralNet& net) {
     os << "NeuralNet Topology: ";
     if (net.mLayers.empty()) {

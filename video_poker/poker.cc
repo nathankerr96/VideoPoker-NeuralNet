@@ -80,8 +80,6 @@ bool Deck::operator!=(const Deck& other) const {
     return !(*this == other);
 }
 
-Hand::Hand() {}
-
 Card& Hand::operator[](int index) {
     return mHand[index];
 }

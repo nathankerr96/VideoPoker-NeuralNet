@@ -7,6 +7,7 @@
 #include <vector>
 
 #define INPUT_SIZE 85
+#define TRAINING_RATE 0.01
 
 std::vector<float> translateHand(Hand hand) {
     std::vector<float> ret(INPUT_SIZE, 0.0f);
@@ -17,6 +18,28 @@ std::vector<float> translateHand(Hand hand) {
     }
     return ret;
 }
+
+void finalEval(NeuralNet& nn) {
+
+    std::vector<std::pair<std::string, Hand>> hands {
+        {"Junk", {{{{CLUB, 2}, {SPADE, 7}, {HEART, 10}, {CLUB, 4}, {DIAMOND, 8}}}}},
+        {"Pair", {{{{CLUB, 2}, {SPADE, 2}, {HEART, 10}, {CLUB, 4}, {DIAMOND, 8}}}}},
+        {"High Pair", {{{{CLUB, 12}, {SPADE, 12}, {HEART, 10}, {CLUB, 4}, {DIAMOND, 8}}}}},
+        {"Two Pair", {{{{CLUB, 12}, {SPADE, 12}, {HEART, 10}, {CLUB, 10}, {DIAMOND, 8}}}}},
+        {"Trips", {{{{CLUB, 12}, {SPADE, 12}, {HEART, 12}, {CLUB, 10}, {DIAMOND, 8}}}}},
+        {"Quads", {{{{CLUB, 12}, {SPADE, 12}, {HEART, 12}, {CLUB, 10}, {DIAMOND, 12}}}}}
+    };
+
+    for (const auto& h : hands) {
+        nn.feedForward(translateHand(h.second));
+        std::cout << h.first << ": " << h.second << std::endl;
+        std::cout << "Output: ";
+        nn.printOutput();
+        std::cout << std::endl;
+    }
+    
+}
+
 
 void printErrors(const std::vector<float>& errors) {
     std::cout << "Errors: [";
@@ -74,7 +97,7 @@ void train(VideoPoker& vp, NeuralNet& nn, int iterations) {
         };
         // printErrors(errors);
         nn.backpropagate(errors);
-        nn.update(0.03f);
+        nn.update(TRAINING_RATE);
     }
 }
 
@@ -112,15 +135,17 @@ void evaluate(VideoPoker& vp, NeuralNet& nn, int iterations) {
 int main() {
     std::vector<LayerSpecification> topology {
         {INPUT_SIZE, nullptr, nullptr},
-        {85, relu, relu_derivative},
+        {170, sigmoid, sigmoid_derivative},
         {170, relu, relu_derivative},
         {170, relu, relu_derivative},
         {5, sigmoid, sigmoid_derivative},
     };
     NeuralNet nn {topology};
     VideoPoker vp {};
-    evaluate(vp, nn, 100000);
+    evaluate(vp, nn, 10000);
+    finalEval(nn);
     train(vp, nn, 100000);
-    evaluate(vp, nn, 100000);
+    evaluate(vp, nn, 10000);
+    finalEval(nn);
     return 0;
 }
