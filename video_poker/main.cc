@@ -10,7 +10,7 @@
 
 #define INPUT_SIZE 85
 #define LEARNING_RATE 0.002
-#define TRAINING_ITERATIONS 3000000
+#define TRAINING_ITERATIONS 1000000
 #define EVAL_ITERATIONS 100000
 
 int main() {
@@ -18,7 +18,7 @@ int main() {
         {INPUT_SIZE, Activation::LINEAR},
         {170, Activation::RELU},
         {170, Activation::RELU},
-        {32, Activation::SOFTMAX},
+        {5, Activation::SIGMOID},
     };
     std::random_device rd {};
     Agent agent {topology, rd()};

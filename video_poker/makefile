@@ -9,10 +9,10 @@ BINDIR = bin
 default: $(TARGET)
 all: default
 
-APP_SOURCES = main.cc poker.cc neural.cc activations.cc agent.cc
+APP_SOURCES = main.cc poker.cc neural.cc activations.cc agent.cc decision.cc
 APP_OBJECTS = $(patsubst %.cc, $(BINDIR)/%.o, $(APP_SOURCES))
 
-HEADERS = poker.h neural.h activations.h agent.h
+HEADERS = poker.h neural.h activations.h agent.h decision.h
 
 $(BINDIR)/%.o: %.cc $(HEADERS)
 	@mkdir -p $(BINDIR)

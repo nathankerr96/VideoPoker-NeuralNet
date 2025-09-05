@@ -2,9 +2,11 @@
 
 #include "neural.h"
 #include "poker.h"
+#include "decision.h"
 
 #include <random>
 #include <vector>
+#include <memory>
 
 class Agent {
 public:
@@ -17,6 +19,7 @@ private:
     NeuralNet mNet;
     VideoPoker mPoker;
     std::mt19937 mRng;
+    std::unique_ptr<DecisionStrategy> mDiscardStrategy;
 
     int trainOneHand(float learningRate, float baseline);
 };

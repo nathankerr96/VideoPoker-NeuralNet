@@ -9,60 +9,12 @@
 #include <algorithm>
 #include <iterator>
 
-std::vector<bool> calcExchangesIndividualRandom(const std::vector<float>& output, std::mt19937& rng) {
-    assert(output.size() == 5);
-    std::uniform_real_distribution<float> uniform_zero_to_one {0.0f, 1.0f};
-    return std::vector<bool> {
-        output[0] > uniform_zero_to_one(rng),
-        output[1] > uniform_zero_to_one(rng),
-        output[2] > uniform_zero_to_one(rng),
-        output[3] > uniform_zero_to_one(rng),
-        output[4] > uniform_zero_to_one(rng)
-    };
-}
-
-std::vector<bool> calcExchangesIndividualFixed(const std::vector<float>& output) {
-    assert(output.size() == 5);
-    return std::vector<bool> {
-        output[0] > 0.5f,
-        output[1] > 0.5f,
-        output[2] > 0.5f,
-        output[3] > 0.5f,
-        output[4] > 0.5f
-    };
-}
-
-
 void printExchanges(const std::vector<bool>& exchanges) {
     std::cout << "Exchanges: [";
     for (bool e : exchanges) {
         std::cout << e << ", ";
     }
     std::cout << "]" << std::endl;
-}
-
-
-int selectDiscardCombination(const std::vector<float>& output, std::mt19937& rng) {
-    assert(output.size() == 32);
-    std::uniform_real_distribution<float> uniform_zero_to_one {0.0f, 1.0f};
-    float target = uniform_zero_to_one(rng);
-    for (size_t i = 0; i < output.size(); i++) {
-        target -= output[i];
-        if (target < 0) {
-            return i;
-        }
-    }
-    assert(false);
-}
-
-std::vector<bool> calcExchangeVector(int val) {
-    assert(val >= 0);
-    std::vector<bool> exchanges;
-    for (int i = 0; i < 5; i++) {
-        exchanges.push_back(val & 1);
-        val >>= 1;
-    }
-    return exchanges;
 }
 
 void printErrors(const std::vector<float>& errors) {
@@ -84,10 +36,22 @@ std::vector<float> translateHand(Hand hand) {
 }
 
 Agent::Agent(const std::vector<LayerSpecification>& topology, unsigned int seed)
-    : mNet(topology),
-      mPoker(VideoPoker()),
-      mRng(seed) {
+        : mNet(topology),
+          mPoker(VideoPoker()),
+          mRng(seed) {
     assert(topology[0].numNeurons == 85); // Hard dependency by hand translation layer.
+    int outputSize = topology.back().numNeurons;
+    switch (outputSize) {
+        case 5:
+            mDiscardStrategy = std::make_unique<FiveNeuronStrategy>();
+            break;
+        case 32:
+            mDiscardStrategy = std::make_unique<ThirtyTwoNeuronStrategy>();
+            break;
+        default:
+            std::cerr << "Output Layer Size: " << outputSize;
+            throw std::invalid_argument("Unsupported Output Layer Size");
+    }
 }
 
 int Agent::trainOneHand(float learningRate, float baseline) {
@@ -97,8 +61,7 @@ int Agent::trainOneHand(float learningRate, float baseline) {
     mNet.feedForward(input);
     const std::vector<float>& output = mNet.getOutputs();
     // std::cout << nn << std::endl;
-    int exchangeDecision = selectDiscardCombination(output, mRng);
-    std::vector<bool> exchanges = calcExchangeVector(exchangeDecision);
+    std::vector<bool> exchanges = mDiscardStrategy->selectAction(output, mRng, true);
 
     h = mPoker.exchange(exchanges);
     // std::cout << "Ending Hand: " << h << std::endl;
@@ -106,20 +69,8 @@ int Agent::trainOneHand(float learningRate, float baseline) {
     int score = mPoker.score(mPoker.getHandType(h));
 
     float advantage = (score - baseline);
-    std::vector<float> errors = output;
-    errors[exchangeDecision] -= 1.0f;
-    for (size_t i = 0; i < errors.size(); i++) {
-        errors[i] *= advantage;
-    } 
 
-    // std::vector<float> errors {
-    //     (exchanges[0] - output[0]) * (score - average_score),
-    //     (exchanges[1] - output[1]) * (score - average_score),
-    //     (exchanges[2] - output[2]) * (score - average_score),
-    //     (exchanges[3] - output[3]) * (score - average_score),
-    //     (exchanges[4] - output[4]) * (score - average_score),
-    // };
-    // printErrors(errors);
+    std::vector<float> errors = mDiscardStrategy->calculateError(output, exchanges, advantage);
     mNet.backpropagate(errors);
     mNet.update(learningRate);
 
@@ -156,8 +107,7 @@ void Agent::randomEval(int iterations) {
         mNet.feedForward(input);
         const std::vector<float>& output = mNet.getOutputs();
         // std::cout << nn << std::endl;
-        int exchangeDecision = std::distance(output.begin(), std::max_element(output.begin(), output.end()));
-        std::vector<bool> exchanges = calcExchangeVector(exchangeDecision);
+        std::vector<bool> exchanges = mDiscardStrategy->selectAction(output, mRng, false);
         h = mPoker.exchange(exchanges);
         // std::cout << "Ending Hand: " << h << std::endl;
         if (i % 1000 == 0) {
@@ -191,8 +141,7 @@ void Agent::targetedEval() {
         std::cout << "Outputs: ";
         mNet.printOutput();
         std::cout << std::endl;
-        int exchangeDecision = std::distance(output.begin(), std::max_element(output.begin(), output.end()));
-        std::vector<bool> exchanges = calcExchangeVector(exchangeDecision);
+        std::vector<bool> exchanges = mDiscardStrategy->selectAction(output, mRng, false);
         std::cout << "Decision: ";
         printExchanges(exchanges);
         std::cout << std::endl;
