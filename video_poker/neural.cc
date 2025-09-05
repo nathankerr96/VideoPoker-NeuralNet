@@ -68,46 +68,55 @@ Layer::Layer(int num_neurons,
 
 void Layer::fire(const std::vector<float>& inputs) {
     mLastInputs = inputs;
-    std::vector<float> mLogits;
+    std::vector<float> logits;
     for (Neuron& n : mNeurons) {
         n.fire(inputs);
-        mLogits.push_back(n.getLogit());
+        logits.push_back(n.getLogit());
     }
     switch (mActivationType) {
         case Activation::LINEAR:
-            mOutputs = mLogits;
+            mOutputs = logits;
             break;
         case Activation::RELU:
-            mOutputs = relu(mLogits);
+            mOutputs = relu(logits);
             break;
         case Activation::SIGMOID:
-            mOutputs = sigmoid(mLogits);
+            mOutputs = sigmoid(logits);
             break;
-        // case Activation::SOFTMAX:
-        //     mOutputs = softmax(mLogits);
-        //     break;
+        case Activation::SOFTMAX:
+            mOutputs = softmax(logits);
+            break;
     }
 }
 
 void Layer::backpropagate(const std::vector<float>& errors) {
-    std::vector<float> outputDerivatives;
-    switch (mActivationType) {
-        case Activation::LINEAR:
-            outputDerivatives = std::vector<float>(mOutputs.size(), 1.0f);
-            break;
-        case Activation::RELU:
-            outputDerivatives = relu_derivative(mOutputs);
-            break;
-        case Activation::SIGMOID:
-            outputDerivatives = sigmoid_derivative(mOutputs);
-            break;
-        // case Activation::SOFTMAX:
-        //     mOutputs = softmax(mLogits);
-        //     break;
+    std::vector<float> gradients(mNeurons.size());
+
+    if (mActivationType == Activation::SOFTMAX) {
+        gradients = errors;
+    } else {
+        std::vector<float> outputDerivatives;
+        switch (mActivationType) {
+            case Activation::LINEAR:
+                outputDerivatives = std::vector<float>(mOutputs.size(), 1.0f);
+                break;
+            case Activation::RELU:
+                outputDerivatives = relu_derivative(mOutputs);
+                break;
+            case Activation::SIGMOID:
+                outputDerivatives = sigmoid_derivative(mOutputs);
+                break;
+            case Activation::SOFTMAX:
+                // Errors vector is already final gradient, handled above.
+                break;
+        }
+        for (size_t i = 0; i < mNeurons.size(); i++) {
+            gradients[i] = outputDerivatives[i] * errors[i];
+        }
     }
+    std::fill(mBlame.begin(), mBlame.end(), 0);
     for (size_t i = 0; i < mNeurons.size(); i++) {
-        float gradient = outputDerivatives[i] * errors[i];
-        mNeurons[i].backpropagate(gradient, mLastInputs);
+        mNeurons[i].backpropagate(gradients[i], mLastInputs);
         const std::vector<float>& neuronBlame = mNeurons[i].getBlame();
         for (size_t j = 0; j < mBlame.size(); j++) {
             mBlame[j] += neuronBlame[j];
@@ -119,7 +128,6 @@ void Layer::update(float learningRate) {
     for (Neuron& n : mNeurons) {
         n.update(learningRate);
     }
-    std::fill(mBlame.begin(), mBlame.end(), 0);
 }
 
 const std::vector<float>& Layer::getOutputs() const {
