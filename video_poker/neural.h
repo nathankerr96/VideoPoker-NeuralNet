@@ -1,36 +1,41 @@
+#ifndef NEURAL_H
+#define NEURAL_H
+
 #include <vector>
 #include <iostream>
 #include <functional>
 
 class Neuron {
 public:
-    Neuron(int num_inputs, 
-        std::function<float(float)> activation, 
-        std::function<float(float)> activation_derivative);
+    Neuron(int num_inputs);
     void fire(const std::vector<float>& inputs);
-    void backpropagate(float error, const std::vector<float>& inputs);
+    void backpropagate(float gradient, const std::vector<float>& inputs);
     void update(float learningRate);
-    float getOutput() const;
+    float getLogit() const;
     const std::vector<float>& getBlame() const;
     int getNumInputs() const;
 
 private:
     float mBias;
-    std::function<float(float)> mActivation;
-    std::function<float(float)> mActivationDerivative;
 
     std::vector<float> mWeights;
     std::vector<float> mWeightChanges; // Separate update step for batching.
     std::vector<float> mBlame;
-    float mOutput;
+    float mLogit;
+};
+
+enum class Activation {
+    SIGMOID,
+    RELU,
+    SOFTMAX,
+    LINEAR
 };
 
 class Layer {
 public:
     Layer(int num_neurons, 
           int num_inputs, 
-          std::function<float(float)> activation, 
-          std::function<float(float)> activation_derivative);
+          Activation activationtype);
     void fire(const std::vector<float>& inputs);
     const std::vector<float>& getOutputs() const;
     int getNumInputs() const;
@@ -41,15 +46,15 @@ public:
 
 private:
     std::vector<Neuron> mNeurons;
+    std::vector<float> mBlame;
+    Activation mActivationType;
     std::vector<float> mOutputs;
     std::vector<float> mLastInputs;
-    std::vector<float> mBlame;
 };
 
 struct LayerSpecification {
     int numNeurons;
-    std::function<float(float)> activation;
-    std::function<float(float)> activation_derivative;
+    Activation activationType;
 };
 
 class NeuralNet {
@@ -65,3 +70,5 @@ public:
 private:
     std::vector<Layer> mLayers;
 };
+
+#endif

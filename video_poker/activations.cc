@@ -1,20 +1,36 @@
 #include "activations.h"
 
 #include <cmath>
+#include <vector>
 
-float sigmoid(float x) {
-    return 1.0f / (1.0f + std::exp(-x));
+std::vector<float> sigmoid(const std::vector<float>& in) {
+    std::vector<float> out;
+    for (float val : in) {
+        out.push_back(1.0f / (1.0f + std::exp(-val)));
+    }
+    return out;
 }
 
-float sigmoid_derivative(float x) {
-    float s = sigmoid(x);
-    return s * (1.0f - s);
+std::vector<float> sigmoid_derivative(const std::vector<float>& in) {
+    std::vector<float> out;
+    for (size_t i = 0; i < in.size(); i++) {
+        out.push_back(in[i] * (1.0f - in[i]));
+    }
+    return out;
 }
 
-float relu(float x) {
-    return std::max(0.0f, x);
+std::vector<float> relu(const std::vector<float>& in) {
+    std::vector<float> out;
+    for (float val : in) {
+        out.push_back(std::max(0.0f, val));
+    }
+    return out;
 }
 
-float relu_derivative(float x) {
-    return (x > 0) ? 1.0f : 0.0f;
+std::vector<float> relu_derivative(const std::vector<float>& in) {
+    std::vector<float> out;
+    for (float val : in) {
+        out.push_back((val > 0) ? 1.0f : 0.0f);
+    }
+    return out;
 }

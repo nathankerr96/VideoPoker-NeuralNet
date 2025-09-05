@@ -25,6 +25,7 @@ void finalEval(NeuralNet& nn) {
         {"Junk", {{{{CLUB, 2}, {SPADE, 7}, {HEART, 10}, {CLUB, 4}, {DIAMOND, 8}}}}},
         {"Pair", {{{{CLUB, 2}, {SPADE, 2}, {HEART, 10}, {CLUB, 4}, {DIAMOND, 8}}}}},
         {"High Pair", {{{{CLUB, 12}, {SPADE, 12}, {HEART, 10}, {CLUB, 4}, {DIAMOND, 8}}}}},
+        {"High Pair", {{{{CLUB, 3}, {SPADE, 12}, {HEART, 10}, {CLUB, 4}, {DIAMOND, 12}}}}},
         {"Two Pair", {{{{CLUB, 12}, {SPADE, 12}, {HEART, 10}, {CLUB, 10}, {DIAMOND, 8}}}}},
         {"Trips", {{{{CLUB, 12}, {SPADE, 12}, {HEART, 12}, {CLUB, 10}, {DIAMOND, 8}}}}},
         {"Quads", {{{{CLUB, 12}, {SPADE, 12}, {HEART, 12}, {CLUB, 10}, {DIAMOND, 12}}}}}
@@ -134,13 +135,14 @@ void evaluate(VideoPoker& vp, NeuralNet& nn, int iterations) {
 
 int main() {
     std::vector<LayerSpecification> topology {
-        {INPUT_SIZE, nullptr, nullptr},
-        {170, sigmoid, sigmoid_derivative},
-        {170, relu, relu_derivative},
-        {170, relu, relu_derivative},
-        {5, sigmoid, sigmoid_derivative},
+        {INPUT_SIZE, Activation::LINEAR},
+        {170, Activation::SIGMOID},
+        {170, Activation::RELU},
+        {170, Activation::RELU},
+        {5, Activation::SIGMOID},
     };
     NeuralNet nn {topology};
+    std::cout << nn << std::endl;
     VideoPoker vp {};
     evaluate(vp, nn, 10000);
     finalEval(nn);
