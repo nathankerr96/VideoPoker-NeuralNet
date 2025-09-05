@@ -22,4 +22,6 @@ private:
     std::unique_ptr<DecisionStrategy> mDiscardStrategy;
 
     int trainOneHand(float learningRate, float baseline);
+    std::vector<float> translateHand(const Hand& hand);
+
 };

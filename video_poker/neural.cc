@@ -185,12 +185,23 @@ int Layer::getNumNeurons() const {
     return mNeurons.size();
 }
 
-void NeuralNet::printOutput() {
-    std::cout << "[";
-    for (float f : mLayers.back().getOutputs()) {
-        std::cout << f << ", ";
+
+std::ostream& operator<<(std::ostream& os, const std::vector<float>& v) {
+    os << "[ ";
+    for (size_t i = 0; i < v.size(); ++i) {
+        os << v[i] << (i == v.size() - 1 ? "" : ", ");
     }
-    std::cout << "]";
+    os << " ]";
+    return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const std::vector<bool>& v) {
+    os << "[ ";
+    for (size_t i = 0; i < v.size(); ++i) {
+        os << v[i] << (i == v.size() - 1 ? "" : ", ");
+    }
+    os << " ]";
+    return os;
 }
 
 std::ostream& operator<<(std::ostream& os, const NeuralNet& net) {
@@ -207,17 +218,6 @@ std::ostream& operator<<(std::ostream& os, const NeuralNet& net) {
     }
     os << std::endl;
 
-    // Print output
-    os << "Output: [ ";
-    const auto& outputs = net.getOutputs();
-    if (outputs.empty()) {
-        os << "(not computed yet)";
-    } else {
-        for (size_t i = 0; i < outputs.size(); ++i) {
-            os << outputs[i] << (i == outputs.size() - 1 ? "" : ", ");
-        }
-    }
-    os << " ]";
 
     return os;
 }
