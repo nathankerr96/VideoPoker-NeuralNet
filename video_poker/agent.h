@@ -17,4 +17,6 @@ private:
     NeuralNet mNet;
     VideoPoker mPoker;
     std::mt19937 mRng;
+
+    int trainOneHand(float learningRate, float baseline);
 };

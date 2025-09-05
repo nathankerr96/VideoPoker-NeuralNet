@@ -90,56 +90,58 @@ Agent::Agent(const std::vector<LayerSpecification>& topology, unsigned int seed)
     assert(topology[0].numNeurons == 85); // Hard dependency by hand translation layer.
 }
 
+int Agent::trainOneHand(float learningRate, float baseline) {
+    Hand h = mPoker.deal();
+    // std::cout << "Starting Hand: " << h << std::endl;
+    std::vector<float> input = translateHand(h);
+    mNet.feedForward(input);
+    const std::vector<float>& output = mNet.getOutputs();
+    // std::cout << nn << std::endl;
+    int exchangeDecision = selectDiscardCombination(output, mRng);
+    std::vector<bool> exchanges = calcExchangeVector(exchangeDecision);
+
+    h = mPoker.exchange(exchanges);
+    // std::cout << "Ending Hand: " << h << std::endl;
+
+    int score = mPoker.score(mPoker.getHandType(h));
+
+    float advantage = (score - baseline);
+    std::vector<float> errors = output;
+    errors[exchangeDecision] -= 1.0f;
+    for (size_t i = 0; i < errors.size(); i++) {
+        errors[i] *= advantage;
+    } 
+
+    // std::vector<float> errors {
+    //     (exchanges[0] - output[0]) * (score - average_score),
+    //     (exchanges[1] - output[1]) * (score - average_score),
+    //     (exchanges[2] - output[2]) * (score - average_score),
+    //     (exchanges[3] - output[3]) * (score - average_score),
+    //     (exchanges[4] - output[4]) * (score - average_score),
+    // };
+    // printErrors(errors);
+    mNet.backpropagate(errors);
+    mNet.update(learningRate);
+
+    return score;
+}
+
 void Agent::train(int iterations, float learningRate) {
 
-    int total_score = 0;
-    int games_played = 0;
+    int totalScore = 0;
     int game1000Total = 0;
     
     // for (int i = 0; i < 100000000; i++) {
     for (int i = 0; i < iterations; i++) {
-        Hand h = mPoker.deal();
-        // std::cout << "Starting Hand: " << h << std::endl;
-        std::vector<float> input = translateHand(h);
-        mNet.feedForward(input);
-        const std::vector<float>& output = mNet.getOutputs();
-        // std::cout << nn << std::endl;
-        int exchangeDecision = selectDiscardCombination(output, mRng);
-        std::vector<bool> exchanges = calcExchangeVector(exchangeDecision);
-
-        h = mPoker.exchange(exchanges);
-        // std::cout << "Ending Hand: " << h << std::endl;
-
-        int score = mPoker.score(mPoker.getHandType(h));
-        total_score += score;
+        int score = trainOneHand(learningRate, float(totalScore) / (i+1));
+        totalScore += score;
         game1000Total += score;
-        games_played += 1;
-        float average_score = float(total_score) / games_played;
-        // std::cout << "Score: " << score <<  ", Games Played: " << games_played << ", Average Score: " << average_score << std::endl;
-        if (games_played % 1000 == 0) {
-            std::cout << "Games Played: " << games_played << ", Average Score: " << average_score << std::endl;
+        if ((i+1) % 1000 == 0) {
+            std::cout << "Games Played: " << (i+1) << ", Average Score: " << float(totalScore) / (i+1) << std::endl;
             std::cout << "Total of last 1000: " << game1000Total << std::endl;
             game1000Total = 0;
             std::cout << mNet << std::endl;
         }
-
-        float advantage = (score - average_score);
-        std::vector<float> errors = output;
-        errors[exchangeDecision] -= 1.0f;
-        for (size_t i = 0; i < errors.size(); i++) {
-            errors[i] *= advantage;
-        } 
-
-        // std::vector<float> errors {
-        //     (exchanges[0] - output[0]) * (score - average_score),
-        //     (exchanges[1] - output[1]) * (score - average_score),
-        //     (exchanges[2] - output[2]) * (score - average_score),
-        //     (exchanges[3] - output[3]) * (score - average_score),
-        //     (exchanges[4] - output[4]) * (score - average_score),
-        // };
-        // printErrors(errors);
-        mNet.backpropagate(errors);
-        mNet.update(learningRate);
     }
 }
 
