@@ -8,12 +8,15 @@
 #include <cassert>
 #include <algorithm>
 #include <iterator>
+#include <atomic>
 
 
 Agent::Agent(const std::vector<LayerSpecification>& topology, unsigned int seed)
         : mNet(topology),
           mPoker(VideoPoker()),
-          mRng(seed) {
+          mRng(seed),
+          mIterations(0),
+          mTotalScore(0) {
     assert(topology[0].numNeurons == 85); // Hard dependency by hand translation layer.
     int outputSize = topology.back().numNeurons;
     switch (outputSize) {
@@ -57,22 +60,26 @@ int Agent::trainOneHand(float learningRate, float baseline) {
     return score;
 }
 
-void Agent::train(int iterations, float learningRate) {
-    int totalScore = 0;
+void Agent::train(const std::atomic<bool>& stopSignal, float learningRate) {
     int game1000Total = 0;
-    for (int i = 0; i < iterations; i++) {
-        int score = trainOneHand(learningRate, float(totalScore) / (i+1));
-        totalScore += score;
+    while (true) {
+        mIterations += 1;
+        int score = trainOneHand(learningRate, float(mTotalScore) / mIterations);
+        mTotalScore += score;
         game1000Total += score;
-        if ((i+1) % 1000 == 0) {
-            std::cout << "Games Played: " << (i+1) << ", Average Score: " << float(totalScore) / (i+1) << std::endl;
+        if (mIterations % 1000 == 0) {
+            std::cout << "Games Played: " << mIterations << ", Average Score: " << float(mTotalScore) / mIterations << std::endl;
             std::cout << "  Average of last 1000: " << float(game1000Total) / 1000 << std::endl;
             std::cout << "  Sample Outputs: " << mNet.getOutputs() << std::endl;
             game1000Total = 0;
+            if (stopSignal) break; // Only stops on even multiples of 1000
         }
     }
 }
 
+int Agent::getNumTrainingIterations() {
+    return mIterations;
+}
 
 void Agent::randomEval(int iterations) {
     std::cout << "---Starting Eval, " <<  iterations << " iterations.---" << std::endl;
