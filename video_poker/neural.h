@@ -17,7 +17,7 @@ public:
 
 private:
     float mBias;
-
+    float mBiasChange;
     std::vector<float> mWeights;
     std::vector<float> mWeightChanges; // Separate update step for batching.
     std::vector<float> mBlame;

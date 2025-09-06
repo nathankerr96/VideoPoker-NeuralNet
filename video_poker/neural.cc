@@ -8,6 +8,7 @@
 
 Neuron::Neuron(int num_inputs)
                : mBias(0),
+                 mBiasChange(0),
                  mWeightChanges(std::vector<float>(num_inputs, 0.0f)),
                  mBlame(std::vector<float>(num_inputs, 0.0f)) {
     std::random_device rd;
@@ -39,6 +40,7 @@ void Neuron::backpropagate(float gradient, const std::vector<float>& inputs) {
     for (size_t i = 0; i < mWeights.size(); i++) {
         mWeightChanges[i] += gradient * inputs[i];
     }
+    mBiasChange += gradient;
 }
 
 void Neuron::update(float learningRate) {
@@ -46,6 +48,8 @@ void Neuron::update(float learningRate) {
         mWeights[i] = mWeights[i] - (learningRate * mWeightChanges[i]);
     }
     std::fill(mWeightChanges.begin(), mWeightChanges.end(), 0);
+    mBias = mBias - (learningRate * mBiasChange);
+    mBiasChange = 0;
 }
 
 float Neuron::getLogit() const {

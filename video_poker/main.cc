@@ -19,7 +19,6 @@ std::vector<LayerSpecification> SOFTMAX_TOPOLOGY {
     {INPUT_SIZE, Activation::LINEAR},
     {170, Activation::RELU},
     {170, Activation::RELU},
-    {170, Activation::RELU},
     {32, Activation::SOFTMAX},
 };
 
