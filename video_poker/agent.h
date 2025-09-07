@@ -25,7 +25,8 @@ private:
     int mIterations;
     int mTotalScore;
 
-    int trainOneHand(float learningRate, float baseline);
+    int trainOneHand(float learningRate, float baseline, bool log);
     std::vector<float> translateHand(const Hand& hand);
+    void logNorms();
 
 };

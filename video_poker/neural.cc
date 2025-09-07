@@ -60,6 +60,22 @@ const std::vector<float>& Neuron::getBlame() const {
     return mBlame;
 }
 
+double Neuron::getWeightNormSquared() const {
+    double sum = mBias * mBias;
+    for (float w : mWeights) {
+        sum += w * w;
+    }
+    return sum;
+}
+
+double Neuron::getGradientNormSquared() const {
+    double sum = mBiasChange * mBiasChange;
+    for (float c : mWeightChanges) {
+        sum += c * c;
+    }
+    return sum;
+}
+
 Layer::Layer(int num_neurons, 
              int num_inputs,
              Activation activationType)
@@ -142,6 +158,22 @@ const std::vector<float>& Layer::getBlame() const {
     return mBlame;
 }
 
+double Layer::getWeightNormSquared() const {
+    double sum = 0.0;
+    for (const Neuron& n : mNeurons) {
+        sum += n.getWeightNormSquared();
+    }
+    return sum;
+}
+
+double Layer::getGradientNormSquared() const {
+    double sum = 0.0;
+    for (const Neuron& n : mNeurons) {
+        sum += n.getGradientNormSquared();
+    }
+    return sum;
+}
+
 NeuralNet::NeuralNet(const std::vector<LayerSpecification>& topology) {
     for (size_t i = 1; i < topology.size(); i++) {
         mLayers.push_back(Layer(topology[i].numNeurons, 
@@ -189,6 +221,21 @@ int Layer::getNumNeurons() const {
     return mNeurons.size();
 }
 
+std::vector<double> NeuralNet::getLayerWeightNormsSquared() const {
+    std::vector<double> ret;
+    for (size_t i = 0; i < mLayers.size(); i++) {
+        ret.push_back(mLayers[i].getWeightNormSquared());
+    }
+    return ret;
+}
+
+std::vector<double> NeuralNet::getLayerGradientNormsSquared() const {
+    std::vector<double> ret;
+    for (size_t i = 0; i < mLayers.size(); i++) {
+        ret.push_back(mLayers[i].getGradientNormSquared());
+    }
+    return ret;
+}
 
 std::ostream& operator<<(std::ostream& os, const std::vector<float>& v) {
     os << "[ ";

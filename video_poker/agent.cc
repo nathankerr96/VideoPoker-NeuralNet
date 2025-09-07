@@ -43,7 +43,7 @@ std::vector<float> Agent::translateHand(const Hand& hand) {
 }
 
 
-int Agent::trainOneHand(float learningRate, float baseline) {
+int Agent::trainOneHand(float learningRate, float baseline, bool log) {
     Hand h = mPoker.deal();
     std::vector<float> input = translateHand(h);
     mNet.feedForward(input);
@@ -55,6 +55,7 @@ int Agent::trainOneHand(float learningRate, float baseline) {
     float advantage = (score - baseline);
     std::vector<float> errors = mDiscardStrategy->calculateError(output, exchanges, advantage);
     mNet.backpropagate(errors);
+    if (log) logNorms();
     mNet.update(learningRate);
 
     return score;
@@ -64,7 +65,7 @@ void Agent::train(const std::atomic<bool>& stopSignal, float learningRate) {
     int game1000Total = 0;
     while (true) {
         mIterations += 1;
-        int score = trainOneHand(learningRate, float(mTotalScore) / mIterations);
+        int score = trainOneHand(learningRate, float(mTotalScore) / mIterations, mIterations % 1000 == 0);
         mTotalScore += score;
         game1000Total += score;
         if (mIterations % 1000 == 0) {
@@ -120,4 +121,24 @@ void Agent::targetedEval() {
         std::vector<bool> exchanges = mDiscardStrategy->selectAction(output, mRng, false);
         std::cout << "Decision: " << exchanges << std::endl;
     }
+}
+
+void Agent::logNorms() {
+    std::vector<double> weightNormsSquared = mNet.getLayerWeightNormsSquared();
+    std::cout << "Weight Norms:" << std::endl;
+    double totalWeightNormSquared = 0.0;
+    for (size_t i = 0; i < weightNormsSquared.size(); i++) {
+        std::cout << "Layer " << i << ": " << std::sqrt(weightNormsSquared[i]) << std::endl;
+        totalWeightNormSquared += weightNormsSquared[i];
+    }
+    std::cout << "Overal Weight Norm: " << std::sqrt(totalWeightNormSquared) << std::endl;
+
+    std::vector<double> gradientNormsSquared = mNet.getLayerGradientNormsSquared();
+    std::cout << "Gradient Norms:" << std::endl;
+    double totalGradientNormSquared = 0.0;
+    for (size_t i = 0; i < gradientNormsSquared.size(); i++) {
+        std::cout << "Layer " << i << ": " << std::sqrt(gradientNormsSquared[i]) << std::endl;
+        totalGradientNormSquared += gradientNormsSquared[i];
+    }
+    std::cout << "Overal Gradient Norm: " << std::sqrt(totalGradientNormSquared) << std::endl;
 }

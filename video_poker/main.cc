@@ -11,7 +11,7 @@
 #include <thread>
 
 #define INPUT_SIZE 85
-#define LEARNING_RATE 0.002
+#define LEARNING_RATE 0.02
 #define TRAINING_ITERATIONS 100000
 #define EVAL_ITERATIONS 10000
 

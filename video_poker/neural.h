@@ -14,6 +14,8 @@ public:
     float getLogit() const;
     const std::vector<float>& getBlame() const;
     int getNumInputs() const;
+    double getWeightNormSquared() const;
+    double getGradientNormSquared() const;
 
 private:
     float mBias;
@@ -43,6 +45,8 @@ public:
     void backpropagate(const std::vector<float>& errors);
     void update(float learningRate);
     const std::vector<float>& getBlame() const;
+    double getWeightNormSquared() const;
+    double getGradientNormSquared() const;
 
 private:
     std::vector<Neuron> mNeurons;
@@ -64,6 +68,9 @@ public:
     void backpropagate(const std::vector<float>& errors);
     void update(float learningRate);
     const std::vector<float>& getOutputs() const;
+    std::vector<double> getLayerWeightNormsSquared() const;
+    std::vector<double> getLayerGradientNormsSquared() const;
+
 
     friend std::ostream& operator<<(std::ostream& os, const NeuralNet& net);
 private:
