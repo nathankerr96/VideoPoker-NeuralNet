@@ -9,11 +9,14 @@
 #include <cassert>
 #include <atomic>
 #include <thread>
+#include <chrono>
+#include <ctime>
 
 #define INPUT_SIZE 85
-#define LEARNING_RATE 0.02
-#define TRAINING_ITERATIONS 100000
-#define EVAL_ITERATIONS 10000
+#define LEARNING_RATE 0.001
+#define EVAL_ITERATIONS 100000
+#define LOGS_DIR "logs/"
+#define LOG_NAME  "170-170-Softmax"
 
 std::vector<LayerSpecification> SOFTMAX_TOPOLOGY {
     {INPUT_SIZE, Activation::LINEAR},
@@ -29,9 +32,16 @@ std::vector<LayerSpecification> SIGMOID_TOPOLOGY {
     {5, Activation::SIGMOID},
 };
 
+std::string getLogName() {
+    const auto now = std::chrono::system_clock::now();
+    std::time_t now_c = std::chrono::system_clock::to_time_t(now);
+    std::string timeString = std::to_string(now_c);
+    return std::string(LOGS_DIR) + std::string(LOG_NAME) + "-" + timeString + ".csv";
+}
+
 int main() {
     std::random_device rd {};
-    Agent agent {SOFTMAX_TOPOLOGY, rd()};
+    Agent agent {SOFTMAX_TOPOLOGY, getLogName(), rd(), LEARNING_RATE};
 
     std::string input;
     std::cout << "Enter command: ";

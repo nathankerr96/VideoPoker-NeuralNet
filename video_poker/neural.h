@@ -4,6 +4,7 @@
 #include <vector>
 #include <iostream>
 #include <functional>
+#include <string>
 
 class Neuron {
 public:
@@ -79,5 +80,7 @@ private:
 
 std::ostream& operator<<(std::ostream& os, const std::vector<float>& v);
 std::ostream& operator<<(std::ostream& os, const std::vector<bool>& v);
+std::ostream& operator<<(std::ostream& os, const LayerSpecification& l);
+std::ostream& operator<<(std::ostream& os, const std::vector<LayerSpecification>& v);
 
 #endif

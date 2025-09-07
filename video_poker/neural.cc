@@ -255,6 +255,34 @@ std::ostream& operator<<(std::ostream& os, const std::vector<bool>& v) {
     return os;
 }
 
+std::ostream& operator<<(std::ostream& os, const LayerSpecification& l) {
+    os << "Neurons-" << l.numNeurons << ", Activation-";
+    switch (l.activationType) {
+        case Activation::SIGMOID:
+            os << "SIGMOID";
+            break;
+        case Activation::RELU:
+            os << "RELU";
+            break;
+        case Activation::SOFTMAX:
+            os << "SOFTMAX";
+            break;
+        case Activation::LINEAR:
+            os << "LINEAR";
+            break;
+        default:
+            os << "UNKNOWN";
+    }
+    return os;
+}
+
+std::ostream& operator<<(std::ostream& os, const std::vector<LayerSpecification>& v) {
+    for (size_t i = 0; i < v.size(); i++) {
+        os << "Layer " << i << ", " << v[i];
+    }
+    return os;
+}
+
 std::ostream& operator<<(std::ostream& os, const NeuralNet& net) {
     os << "NeuralNet Topology: ";
     if (net.mLayers.empty()) {

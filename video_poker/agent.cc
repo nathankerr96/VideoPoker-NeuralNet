@@ -9,14 +9,16 @@
 #include <algorithm>
 #include <iterator>
 #include <atomic>
+#include <string>
 
 
-Agent::Agent(const std::vector<LayerSpecification>& topology, unsigned int seed)
+Agent::Agent(const std::vector<LayerSpecification>& topology, std::string fileName, unsigned int seed, float learningRate)
         : mNet(topology),
           mPoker(VideoPoker()),
           mRng(seed),
           mIterations(0),
-          mTotalScore(0) {
+          mTotalScore(0),
+          mLogFile(fileName) {
     assert(topology[0].numNeurons == 85); // Hard dependency by hand translation layer.
     int outputSize = topology.back().numNeurons;
     switch (outputSize) {
@@ -29,6 +31,21 @@ Agent::Agent(const std::vector<LayerSpecification>& topology, unsigned int seed)
         default:
             std::cerr << "Output Layer Size: " << outputSize;
             throw std::invalid_argument("Unsupported Output Layer Size");
+    }
+
+    if (!mLogFile.is_open()) {
+        std::cerr << "Could not open Log file!" << std::endl;
+    } else {
+        mLogFile << "Topology " << std::endl << topology << std::endl;
+        mLogFile << "Learning Rate," << learningRate << std::endl << std::endl;
+        mLogFile << "Iterations,TotalAvgScore,RecentAvgScore,GlobalWeightNorm,GlobalGradientNorm,";
+        for (size_t i = 1; i < topology.size(); i++) {
+            mLogFile << "Layer" << i << "WeightNorm,";
+        }
+        for (size_t i = 1; i < topology.size(); i++) {
+            mLogFile << "Layer" << i << "GradientNorm,";
+        }
+        mLogFile << std::endl;
     }
 }
 
@@ -43,38 +60,43 @@ std::vector<float> Agent::translateHand(const Hand& hand) {
 }
 
 
-int Agent::trainOneHand(float learningRate, float baseline, bool log) {
-    Hand h = mPoker.deal();
-    std::vector<float> input = translateHand(h);
-    mNet.feedForward(input);
-    const std::vector<float>& output = mNet.getOutputs();
-    std::vector<bool> exchanges = mDiscardStrategy->selectAction(output, mRng, true);
-    h = mPoker.exchange(exchanges);
-
-    int score = mPoker.score(mPoker.getHandType(h));
-    float advantage = (score - baseline);
-    std::vector<float> errors = mDiscardStrategy->calculateError(output, exchanges, advantage);
-    mNet.backpropagate(errors);
-    if (log) logNorms();
-    mNet.update(learningRate);
-
-    return score;
-}
-
 void Agent::train(const std::atomic<bool>& stopSignal, float learningRate) {
-    int game1000Total = 0;
+    int recentTotal = 0;
     while (true) {
+        Hand h = mPoker.deal();
+        std::vector<float> input = translateHand(h);
+        mNet.feedForward(input);
+        const std::vector<float>& output = mNet.getOutputs();
+        std::vector<bool> exchanges = mDiscardStrategy->selectAction(output, mRng, true);
+        h = mPoker.exchange(exchanges);
+
+        int score = mPoker.score(mPoker.getHandType(h));
         mIterations += 1;
-        int score = trainOneHand(learningRate, float(mTotalScore) / mIterations, mIterations % 1000 == 0);
         mTotalScore += score;
-        game1000Total += score;
+        recentTotal += score;
+
+        float baseline = float(mTotalScore) / mIterations;
+        float advantage = (score - baseline);
+        std::vector<float> errors = mDiscardStrategy->calculateError(output, exchanges, advantage);
+        mNet.backpropagate(errors);
+
         if (mIterations % 1000 == 0) {
-            std::cout << "Games Played: " << mIterations << ", Average Score: " << float(mTotalScore) / mIterations << std::endl;
-            std::cout << "  Average of last 1000: " << float(game1000Total) / 1000 << std::endl;
+            float averageTotalScore = float(mTotalScore) / mIterations;
+            float averageRecentScore = float(recentTotal) / 1000;
+            std::cout << "Games Played: " << mIterations << ", Average Score: " << averageTotalScore << std::endl;
+            std::cout << "  Average of last 1000: " << averageRecentScore << std::endl;
             std::cout << "  Sample Outputs: " << mNet.getOutputs() << std::endl;
-            game1000Total = 0;
+            mLogFile << mIterations << ",";
+            mLogFile << averageTotalScore << ",";
+            mLogFile << averageRecentScore << ",";
+            logAndPrintNorms();
+            mLogFile << std::endl;
+            std::cout << std::endl;
+            recentTotal = 0;
             if (stopSignal) break; // Only stops on even multiples of 1000
         }
+
+        mNet.update(learningRate);
     }
 }
 
@@ -98,7 +120,7 @@ void Agent::randomEval(int iterations) {
         int score = mPoker.score(mPoker.getHandType(h));
         total_score += score;
     }
-    std::cout << "---Average Score: " << float(total_score) / iterations << "---" << std::endl;
+    std::cout << "---Average Score: " << float(total_score) / iterations << "---" << std::endl << std::endl;
 }
 
 
@@ -123,7 +145,7 @@ void Agent::targetedEval() {
     }
 }
 
-void Agent::logNorms() {
+void Agent::logAndPrintNorms() {
     std::vector<double> weightNormsSquared = mNet.getLayerWeightNormsSquared();
     std::cout << "Weight Norms:" << std::endl;
     double totalWeightNormSquared = 0.0;
@@ -131,7 +153,8 @@ void Agent::logNorms() {
         std::cout << "Layer " << i << ": " << std::sqrt(weightNormsSquared[i]) << std::endl;
         totalWeightNormSquared += weightNormsSquared[i];
     }
-    std::cout << "Overal Weight Norm: " << std::sqrt(totalWeightNormSquared) << std::endl;
+    double globalWeightNorm = std::sqrt(totalWeightNormSquared);
+    std::cout << "Overal Weight Norm: " <<  globalWeightNorm << std::endl;
 
     std::vector<double> gradientNormsSquared = mNet.getLayerGradientNormsSquared();
     std::cout << "Gradient Norms:" << std::endl;
@@ -140,5 +163,15 @@ void Agent::logNorms() {
         std::cout << "Layer " << i << ": " << std::sqrt(gradientNormsSquared[i]) << std::endl;
         totalGradientNormSquared += gradientNormsSquared[i];
     }
-    std::cout << "Overal Gradient Norm: " << std::sqrt(totalGradientNormSquared) << std::endl;
+    double globalGradientNorm = std::sqrt(totalGradientNormSquared);
+    std::cout << "Overal Gradient Norm: " << globalGradientNorm << std::endl;
+
+    mLogFile << globalWeightNorm << ",";
+    mLogFile << globalGradientNorm << ",";
+    for (size_t i = 0; i < weightNormsSquared.size(); i++) {
+        mLogFile << std::sqrt(weightNormsSquared[i]) << ",";
+    }
+    for (size_t i = 0; i < gradientNormsSquared.size(); i++) {
+        mLogFile << std::sqrt(gradientNormsSquared[i]) << ",";
+    }
 }
