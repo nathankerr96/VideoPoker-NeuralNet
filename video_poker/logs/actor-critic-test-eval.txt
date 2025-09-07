@@ -1,0 +1,35 @@
+Enter command: eval
+---Starting Eval, 100000 iterations.---
+Games Played: 10000, Total Score: 3476
+Games Played: 20000, Total Score: 6823
+Games Played: 30000, Total Score: 10327
+Games Played: 40000, Total Score: 13748
+Games Played: 50000, Total Score: 17202
+Games Played: 60000, Total Score: 20420
+Games Played: 70000, Total Score: 23807
+Games Played: 80000, Total Score: 27200
+Games Played: 90000, Total Score: 30475
+Games Played: 100000, Total Score: 33858
+---Average Score: 0.33858---
+
+Junk: 2♣ 7♠ T♥ 4♣ 8♦
+Outputs: [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]
+Decision: [ 1, 0, 0, 0, 1 ]
+Pair: 2♣ 2♠ T♥ 4♣ 8♦
+Outputs: [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]
+Decision: [ 1, 0, 0, 0, 1 ]
+High Pair: Q♣ Q♠ T♥ 4♣ 8♦
+Outputs: [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]
+Decision: [ 1, 0, 0, 0, 1 ]
+High Pair: 3♣ Q♠ T♥ 4♣ Q♦
+Outputs: [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]
+Decision: [ 1, 0, 0, 0, 1 ]
+Two Pair: Q♣ Q♠ T♥ T♣ 8♦
+Outputs: [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]
+Decision: [ 1, 0, 0, 0, 1 ]
+Trips: Q♣ Q♠ Q♥ T♣ 8♦
+Outputs: [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]
+Decision: [ 1, 0, 0, 0, 1 ]
+Quads: Q♣ Q♠ Q♥ T♣ Q♦
+Outputs: [ 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 1, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0, 0 ]
+Decision: [ 1, 0, 0, 0, 1 ]

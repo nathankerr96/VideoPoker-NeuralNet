@@ -12,10 +12,15 @@
 #include <string>
 
 
-Agent::Agent(const std::vector<LayerSpecification>& topology, std::string fileName, unsigned int seed, float learningRate)
+Agent::Agent(const std::vector<LayerSpecification>& topology, 
+             std::string fileName, 
+             unsigned int seed, 
+             float learningRate, 
+             std::unique_ptr<BaselineCalculator> baselineCalc)
         : mNet(topology),
           mPoker(VideoPoker()),
           mRng(seed),
+          mBaselineCalculator(std::move(baselineCalc)),
           mIterations(0),
           mTotalScore(0),
           mLogFile(fileName) {
@@ -38,6 +43,7 @@ Agent::Agent(const std::vector<LayerSpecification>& topology, std::string fileNa
     } else {
         mLogFile << "Topology " << std::endl << topology << std::endl;
         mLogFile << "Learning Rate," << learningRate << std::endl << std::endl;
+        mLogFile << "Baseline Calculator, " << mBaselineCalculator->getName() << std::endl;
         mLogFile << "Iterations,TotalAvgScore,RecentAvgScore,GlobalWeightNorm,GlobalGradientNorm,";
         for (size_t i = 1; i < topology.size(); i++) {
             mLogFile << "Layer" << i << "WeightNorm,";
@@ -65,17 +71,18 @@ void Agent::train(const std::atomic<bool>& stopSignal, float learningRate) {
     while (true) {
         Hand h = mPoker.deal();
         std::vector<float> input = translateHand(h);
+        float baseline = mBaselineCalculator->predict(input);
         mNet.feedForward(input);
         const std::vector<float>& output = mNet.getOutputs();
         std::vector<bool> exchanges = mDiscardStrategy->selectAction(output, mRng, true);
-        h = mPoker.exchange(exchanges);
+        Hand e = mPoker.exchange(exchanges);
 
-        int score = mPoker.score(mPoker.getHandType(h));
+        int score = mPoker.score(mPoker.getHandType(e));
+        mBaselineCalculator->train(score);
         mIterations += 1;
         mTotalScore += score;
         recentTotal += score;
 
-        float baseline = float(mTotalScore) / mIterations;
         float advantage = (score - baseline);
         std::vector<float> errors = mDiscardStrategy->calculateError(output, exchanges, advantage);
         mNet.backpropagate(errors);
@@ -84,8 +91,13 @@ void Agent::train(const std::atomic<bool>& stopSignal, float learningRate) {
             float averageTotalScore = float(mTotalScore) / mIterations;
             float averageRecentScore = float(recentTotal) / 1000;
             std::cout << "Games Played: " << mIterations << ", Average Score: " << averageTotalScore << std::endl;
-            std::cout << "  Average of last 1000: " << averageRecentScore << std::endl;
-            std::cout << "  Sample Outputs: " << mNet.getOutputs() << std::endl;
+            std::cout << "Average of last 1000: " << averageRecentScore << std::endl;
+            std::cout << "Sample Hand: " << h << std::endl;
+            std::cout << "Baseline: " << baseline << std::endl;
+            std::cout << "Outputs: " << mNet.getOutputs() << std::endl;
+            std::cout << "Prediction: " << exchanges << std::endl;
+            std::cout << "Ending Hand: " << e << std::endl;
+            std::cout << "Score: " << score << std::endl;
             mLogFile << mIterations << ",";
             mLogFile << averageTotalScore << ",";
             mLogFile << averageRecentScore << ",";
@@ -154,7 +166,7 @@ void Agent::logAndPrintNorms() {
         totalWeightNormSquared += weightNormsSquared[i];
     }
     double globalWeightNorm = std::sqrt(totalWeightNormSquared);
-    std::cout << "Overal Weight Norm: " <<  globalWeightNorm << std::endl;
+    std::cout << "Overall Weight Norm: " <<  globalWeightNorm << std::endl;
 
     std::vector<double> gradientNormsSquared = mNet.getLayerGradientNormsSquared();
     std::cout << "Gradient Norms:" << std::endl;
@@ -164,7 +176,7 @@ void Agent::logAndPrintNorms() {
         totalGradientNormSquared += gradientNormsSquared[i];
     }
     double globalGradientNorm = std::sqrt(totalGradientNormSquared);
-    std::cout << "Overal Gradient Norm: " << globalGradientNorm << std::endl;
+    std::cout << "Overall Gradient Norm: " << globalGradientNorm << std::endl;
 
     mLogFile << globalWeightNorm << ",";
     mLogFile << globalGradientNorm << ",";

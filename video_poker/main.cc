@@ -16,7 +16,8 @@
 #define LEARNING_RATE 0.002
 #define EVAL_ITERATIONS 100000
 #define LOGS_DIR "logs/"
-#define LOG_NAME  "170-170-Softmax"
+#define LOG_NAME  "test"
+#define CRITIC_NETWORK_LEARNING_RATE 0.005
 
 std::vector<LayerSpecification> SOFTMAX_TOPOLOGY {
     {INPUT_SIZE, Activation::LINEAR},
@@ -32,6 +33,12 @@ std::vector<LayerSpecification> SIGMOID_TOPOLOGY {
     {5, Activation::SIGMOID},
 };
 
+std::vector<LayerSpecification> CRITIC_NETWORK_TOPOLOGY {
+    {INPUT_SIZE, Activation::LINEAR},
+    {85, Activation::RELU},
+    {1, Activation::LINEAR},
+};
+
 std::string getLogName() {
     const auto now = std::chrono::system_clock::now();
     std::time_t now_c = std::chrono::system_clock::to_time_t(now);
@@ -39,9 +46,29 @@ std::string getLogName() {
     return std::string(LOGS_DIR) + std::string(LOG_NAME) + "-" + timeString + ".csv";
 }
 
+std::unique_ptr<BaselineCalculator> getFlatBaseline() {
+    return std::make_unique<FlatBaseline>();
+}
+
+std::unique_ptr<BaselineCalculator> getRunningAverageBaseline() {
+    return std::make_unique<RunningAverageBaseline>();
+}
+
+std::unique_ptr<BaselineCalculator> getCriticNetworkBaseline() {
+    return std::make_unique<CriticNetworkBaseline>(CRITIC_NETWORK_TOPOLOGY, CRITIC_NETWORK_LEARNING_RATE);
+}
+
 int main() {
     std::random_device rd {};
-    Agent agent {SOFTMAX_TOPOLOGY, getLogName(), rd(), LEARNING_RATE};
+
+    Agent agent {
+        SOFTMAX_TOPOLOGY, 
+        getLogName(), 
+        rd(), 
+        LEARNING_RATE,
+        // getRunningAverageBaseline()
+        getCriticNetworkBaseline(),
+    };
 
     std::string input;
     std::cout << "Enter command: ";

@@ -3,6 +3,7 @@
 #include "neural.h"
 #include "poker.h"
 #include "decision.h"
+#include "baseline.h"
 
 #include <random>
 #include <vector>
@@ -13,7 +14,11 @@
 
 class Agent {
 public:
-    Agent(const std::vector<LayerSpecification>& topology, std::string fileName, unsigned int seed, float learningRate);
+    Agent(const std::vector<LayerSpecification>& topology, 
+          std::string fileName, 
+          unsigned int seed, 
+          float learningRate,
+          std::unique_ptr<BaselineCalculator> baselineCalc);
     void train(const std::atomic<bool>& stopSignal, float learningRate);
     void randomEval(int iterations);
     void targetedEval();
@@ -24,6 +29,7 @@ private:
     VideoPoker mPoker;
     std::mt19937 mRng;
     std::unique_ptr<DecisionStrategy> mDiscardStrategy;
+    std::unique_ptr<BaselineCalculator> mBaselineCalculator;
     int mIterations;
     int mTotalScore;
     std::ofstream mLogFile;
