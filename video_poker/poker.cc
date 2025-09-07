@@ -177,8 +177,10 @@ PokerHand VideoPoker::getHandType(const Hand& hand) {
 
 int VideoPoker::score(PokerHand handType) {
     switch(handType) {
-        case PokerHand::ROYAL_FLUSH: return 800;
-        case PokerHand::STRAIGHT_FLUSH: return 40;
+        // case PokerHand::ROYAL_FLUSH: return 800;
+        case PokerHand::ROYAL_FLUSH: return 12;
+        // case PokerHand::STRAIGHT_FLUSH: return 40;
+        case PokerHand::STRAIGHT_FLUSH: return 12;
         case PokerHand::FOUR_OF_A_KIND: return 20;
         case PokerHand::FULL_HOUSE: return 9;
         case PokerHand::FLUSH: return 6;

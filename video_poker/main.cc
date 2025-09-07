@@ -16,7 +16,7 @@
 #define LEARNING_RATE 0.002
 #define EVAL_ITERATIONS 100000
 #define LOGS_DIR "logs/"
-#define LOG_NAME  "test"
+#define LOG_NAME  "170-170-Softmax-ActorCritic-No-Royal"
 #define CRITIC_NETWORK_LEARNING_RATE 0.005
 
 std::vector<LayerSpecification> SOFTMAX_TOPOLOGY {
