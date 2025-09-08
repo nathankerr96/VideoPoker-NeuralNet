@@ -33,7 +33,9 @@ public:
     double getWeightNormSquared() const;
 
 private:
-    std::vector<std::vector<float>> mWeights;
+    int mNumNeurons;
+    int mNumInputs;
+    std::vector<float> mWeights;
     std::vector<float> mBiases;
 
     Activation mActivationType;

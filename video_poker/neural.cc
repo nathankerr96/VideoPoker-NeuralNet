@@ -6,45 +6,34 @@
 #include <stdexcept>
 #include <cmath>
 
-double getNeuronWeightNormSquared(float bias, std::vector<float> weights) {
-    double sum = bias * bias;
-    for (float w : weights) {
-        sum += w * w;
-    }
-    return sum;
-}
-
 Layer::Layer(int num_neurons, 
              int num_inputs,
              Activation activationType)
-             : mBiases(std::vector<float>(num_neurons, 0.0f)), // Biases can start at 0 since weights break symmetry
+             : mNumNeurons(num_neurons),
+               mNumInputs(num_inputs),
+               mBiases(std::vector<float>(num_neurons, 0.0f)), // Biases can start at 0 since weights break symmetry
                mActivationType(activationType) {
     std::random_device rd;
     std::mt19937 generator(rd());
     std::uniform_real_distribution<float> dis(-1.0, 1.0);
-    mWeights.reserve(num_neurons);
-    for (int i = 0; i < num_neurons; i++) {
-        std::vector<float> weights;
-        weights.reserve(num_inputs);
-        for (int j = 0; j < num_inputs; j++) {
-            weights.push_back(dis(generator) / sqrt(num_inputs));
-        }
-        mWeights.push_back(weights);
+    mWeights.reserve(num_neurons * num_inputs);
+    for (int i = 0; i < num_neurons * num_inputs; i++) {
+        mWeights.push_back(dis(generator) / sqrt(num_inputs));
     }
     mOutputs.resize(num_neurons);
 }
 
 void Layer::fire(const std::vector<float>& inputs) {
-    if (inputs.size() != mWeights[0].size()) {
-        std::cerr << "Inputs: " << inputs.size() << ", Weights: " << mWeights[0].size() << std::endl;
+    if (int(inputs.size()) != mNumInputs) {
+        std::cerr << "Inputs: " << inputs.size() << ", Neurons: " << mNumNeurons << std::endl;
         throw std::invalid_argument("Inputs != Weights");
     }
     mLastInputs = inputs;
     std::vector<float> logits;
-    for (size_t n = 0; n < mWeights.size(); n++) {
+    for (int n = 0; n < mNumNeurons; n++) {
         float sum = mBiases[n];
         for (size_t i = 0; i < inputs.size(); i++) {
-            sum += inputs[i] * mWeights[n][i];
+            sum += inputs[i] * mWeights[n*mNumInputs+i];
         }
         logits.push_back(sum);
     }
@@ -68,7 +57,7 @@ void Layer::backpropagate(const std::vector<float>& upstreamGradient,
                           std::vector<std::vector<float>>& weightGradientOut,
                           std::vector<float>& biasGradientOut,
                           std::vector<float>& downstreamGradientOut) {
-    std::vector<float> delta(mWeights.size());
+    std::vector<float> delta(mNumNeurons);
 
     if (mActivationType == Activation::SOFTMAX) {
         delta = upstreamGradient;
@@ -88,23 +77,23 @@ void Layer::backpropagate(const std::vector<float>& upstreamGradient,
                 // Errors vector is already final gradient, handled above.
                 break;
         }
-        for (size_t n = 0; n < mWeights.size(); n++) {
+        for (int n = 0; n < mNumNeurons; n++) {
             delta[n] = outputDerivatives[n] * upstreamGradient[n];
         }
     }
-    for (size_t n = 0; n < mWeights.size(); n++) {
+    for (int n = 0; n < mNumNeurons; n++) {
         std::vector<float> neuronGradient;
-        for (size_t i = 0; i < mWeights[n].size(); i++) {
+        for (int i = 0; i < mNumInputs; i++) {
             neuronGradient.push_back(delta[n] * mLastInputs[i]);
         }
         weightGradientOut.push_back(neuronGradient);
     }
     biasGradientOut = delta;
 
-    for (size_t i = 0; i < mWeights[0].size(); i++) {
+    for (int i = 0; i < mNumInputs; i++) {
         float sum = 0.0f;
-        for (size_t n = 0; n < mWeights.size(); n++) {
-            sum += mWeights[n][i] * delta[n];
+        for (int n = 0; n < mNumNeurons; n++) {
+            sum += mWeights[n*mNumInputs+i] * delta[n];
         }
         downstreamGradientOut.push_back(sum);
     }
@@ -113,9 +102,9 @@ void Layer::backpropagate(const std::vector<float>& upstreamGradient,
 void Layer::update(float learningRate, 
                    const std::vector<std::vector<float>>& weightGradient, 
                    const std::vector<float>& biasGradient) {
-    for (size_t n = 0; n < mWeights.size(); n++) {
-        for (size_t i = 0; i < mWeights[n].size(); i++) {
-            mWeights[n][i] = mWeights[n][i] - (learningRate * weightGradient[n][i]);
+    for (int n = 0; n < mNumNeurons; n++) {
+        for (int i = 0; i < mNumInputs; i++) {
+            mWeights[n*mNumInputs+i] = mWeights[n*mNumInputs+i] - (learningRate * weightGradient[n][i]);
         }
         mBiases[n] = mBiases[n] - (learningRate * biasGradient[n]);
     }
@@ -127,8 +116,11 @@ const std::vector<float>& Layer::getOutputs() const {
 
 double Layer::getWeightNormSquared() const {
     double sum = 0.0;
-    for (size_t n = 0; n < mWeights.size(); n++) {
-        sum += getNeuronWeightNormSquared(mBiases[n], mWeights[n]);
+    for (float b : mBiases) {
+        sum += b * b;
+    }
+    for (float w : mWeights) {
+        sum += w * w;
     }
     return sum;
 }
@@ -182,14 +174,11 @@ const std::vector<float>& NeuralNet::getOutputs() const {
 }
 
 int Layer::getNumInputs() const {
-    if (mWeights.empty()) {
-        return 0;
-    }
-    return mWeights[0].size();
+    return mNumInputs;
 }
 
 int Layer::getNumNeurons() const {
-    return mWeights.size();
+    return mNumNeurons;
 }
 
 std::vector<double> NeuralNet::getLayerWeightNormsSquared() const {
