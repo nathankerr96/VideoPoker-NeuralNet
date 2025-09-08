@@ -85,7 +85,9 @@ void Agent::train(const std::atomic<bool>& stopSignal, float learningRate) {
 
         float advantage = (score - baseline);
         std::vector<float> errors = mDiscardStrategy->calculateError(output, exchanges, advantage);
-        mNet.backpropagate(errors);
+        std::vector<std::vector<std::vector<float>>> layeredWeightGradients;
+        std::vector<std::vector<float>> layeredBiasGradients;
+        mNet.backpropagate(errors, layeredWeightGradients, layeredBiasGradients);
 
         if (mIterations % 1000 == 0) {
             float averageTotalScore = float(mTotalScore) / mIterations;
@@ -101,14 +103,14 @@ void Agent::train(const std::atomic<bool>& stopSignal, float learningRate) {
             mLogFile << mIterations << ",";
             mLogFile << averageTotalScore << ",";
             mLogFile << averageRecentScore << ",";
-            logAndPrintNorms();
+            logAndPrintNorms(layeredWeightGradients, layeredBiasGradients);
             mLogFile << std::endl;
             std::cout << std::endl;
             recentTotal = 0;
             if (stopSignal) break; // Only stops on even multiples of 1000
         }
 
-        mNet.update(learningRate);
+        mNet.update(learningRate, layeredWeightGradients, layeredBiasGradients);
     }
 }
 
@@ -157,7 +159,9 @@ void Agent::targetedEval() {
     }
 }
 
-void Agent::logAndPrintNorms() {
+void Agent::logAndPrintNorms(
+        const std::vector<std::vector<std::vector<float>>>& layeredWeightGradients,
+        const std::vector<std::vector<float>>& layeredBiasGradientsOut) {
     std::vector<double> weightNormsSquared = mNet.getLayerWeightNormsSquared();
     std::cout << "Weight Norms:" << std::endl;
     double totalWeightNormSquared = 0.0;
@@ -168,7 +172,7 @@ void Agent::logAndPrintNorms() {
     double globalWeightNorm = std::sqrt(totalWeightNormSquared);
     std::cout << "Overall Weight Norm: " <<  globalWeightNorm << std::endl;
 
-    std::vector<double> gradientNormsSquared = mNet.getLayerGradientNormsSquared();
+    std::vector<double> gradientNormsSquared = mNet.getLayerGradientNormsSquared(layeredBiasGradientsOut, layeredWeightGradients);
     std::cout << "Gradient Norms:" << std::endl;
     double totalGradientNormSquared = 0.0;
     for (size_t i = 0; i < gradientNormsSquared.size(); i++) {

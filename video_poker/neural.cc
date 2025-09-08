@@ -6,72 +6,10 @@
 #include <stdexcept>
 #include <cmath>
 
-Neuron::Neuron(int num_inputs)
-               : mBias(0),
-                 mBiasChange(0),
-                 mWeightChanges(std::vector<float>(num_inputs, 0.0f)),
-                 mBlame(std::vector<float>(num_inputs, 0.0f)) {
-    std::random_device rd;
-    std::mt19937 generator(rd());
-    std::uniform_real_distribution<float> dis(-1.0, 1.0);
-
-    mWeights.reserve(num_inputs);
-    for (int i = 0; i < num_inputs; i++) {
-        mWeights.push_back(dis(generator) / sqrt(num_inputs));
-    }
-}
-
-void Neuron::fire(const std::vector<float>& inputs) {
-    if (inputs.size() != mWeights.size()) {
-        std::cerr << "Inputs: " << inputs.size() << ", Weights: " << mWeights.size() << std::endl;
-        throw std::invalid_argument("Inputs != Weights");
-    }
-    float sum = mBias;
-    for (size_t i = 0; i < inputs.size(); i++) {
-        sum += inputs[i] * mWeights[i];
-    }
-    mLogit = sum;
-}
-
-void Neuron::backpropagate(float gradient, const std::vector<float>& inputs) {
-    for (size_t i = 0; i < mWeights.size(); i++) {
-        mBlame[i] = mWeights[i] * gradient;
-    }
-    for (size_t i = 0; i < mWeights.size(); i++) {
-        mWeightChanges[i] += gradient * inputs[i];
-    }
-    mBiasChange += gradient;
-}
-
-void Neuron::update(float learningRate) {
-    for (size_t i = 0; i < mWeights.size(); i++) {
-        mWeights[i] = mWeights[i] - (learningRate * mWeightChanges[i]);
-    }
-    std::fill(mWeightChanges.begin(), mWeightChanges.end(), 0);
-    mBias = mBias - (learningRate * mBiasChange);
-    mBiasChange = 0;
-}
-
-float Neuron::getLogit() const {
-    return mLogit;
-}
-
-const std::vector<float>& Neuron::getBlame() const {
-    return mBlame;
-}
-
-double Neuron::getWeightNormSquared() const {
-    double sum = mBias * mBias;
-    for (float w : mWeights) {
+double getNeuronWeightNormSquared(float bias, std::vector<float> weights) {
+    double sum = bias * bias;
+    for (float w : weights) {
         sum += w * w;
-    }
-    return sum;
-}
-
-double Neuron::getGradientNormSquared() const {
-    double sum = mBiasChange * mBiasChange;
-    for (float c : mWeightChanges) {
-        sum += c * c;
     }
     return sum;
 }
@@ -79,19 +17,36 @@ double Neuron::getGradientNormSquared() const {
 Layer::Layer(int num_neurons, 
              int num_inputs,
              Activation activationType)
-             : mBlame(std::vector<float>(num_inputs, 0.0f)), mActivationType(activationType) {
+             : mBiases(std::vector<float>(num_neurons, 0.0f)), // Biases can start at 0 since weights break symmetry
+               mActivationType(activationType) {
+    std::random_device rd;
+    std::mt19937 generator(rd());
+    std::uniform_real_distribution<float> dis(-1.0, 1.0);
+    mWeights.reserve(num_neurons);
     for (int i = 0; i < num_neurons; i++) {
-        mNeurons.push_back(Neuron(num_inputs));
+        std::vector<float> weights;
+        weights.reserve(num_inputs);
+        for (int j = 0; j < num_inputs; j++) {
+            weights.push_back(dis(generator) / sqrt(num_inputs));
+        }
+        mWeights.push_back(weights);
     }
     mOutputs.resize(num_neurons);
 }
 
 void Layer::fire(const std::vector<float>& inputs) {
+    if (inputs.size() != mWeights[0].size()) {
+        std::cerr << "Inputs: " << inputs.size() << ", Weights: " << mWeights[0].size() << std::endl;
+        throw std::invalid_argument("Inputs != Weights");
+    }
     mLastInputs = inputs;
     std::vector<float> logits;
-    for (Neuron& n : mNeurons) {
-        n.fire(inputs);
-        logits.push_back(n.getLogit());
+    for (size_t n = 0; n < mWeights.size(); n++) {
+        float sum = mBiases[n];
+        for (size_t i = 0; i < inputs.size(); i++) {
+            sum += inputs[i] * mWeights[n][i];
+        }
+        logits.push_back(sum);
     }
     switch (mActivationType) {
         case Activation::LINEAR:
@@ -109,11 +64,14 @@ void Layer::fire(const std::vector<float>& inputs) {
     }
 }
 
-void Layer::backpropagate(const std::vector<float>& errors) {
-    std::vector<float> gradients(mNeurons.size());
+void Layer::backpropagate(const std::vector<float>& upstreamGradient,
+                          std::vector<std::vector<float>>& weightGradientOut,
+                          std::vector<float>& biasGradientOut,
+                          std::vector<float>& downstreamGradientOut) {
+    std::vector<float> delta(mWeights.size());
 
     if (mActivationType == Activation::SOFTMAX) {
-        gradients = errors;
+        delta = upstreamGradient;
     } else {
         std::vector<float> outputDerivatives;
         switch (mActivationType) {
@@ -130,23 +88,36 @@ void Layer::backpropagate(const std::vector<float>& errors) {
                 // Errors vector is already final gradient, handled above.
                 break;
         }
-        for (size_t i = 0; i < mNeurons.size(); i++) {
-            gradients[i] = outputDerivatives[i] * errors[i];
+        for (size_t n = 0; n < mWeights.size(); n++) {
+            delta[n] = outputDerivatives[n] * upstreamGradient[n];
         }
     }
-    std::fill(mBlame.begin(), mBlame.end(), 0);
-    for (size_t i = 0; i < mNeurons.size(); i++) {
-        mNeurons[i].backpropagate(gradients[i], mLastInputs);
-        const std::vector<float>& neuronBlame = mNeurons[i].getBlame();
-        for (size_t j = 0; j < mBlame.size(); j++) {
-            mBlame[j] += neuronBlame[j];
+    for (size_t n = 0; n < mWeights.size(); n++) {
+        std::vector<float> neuronGradient;
+        for (size_t i = 0; i < mWeights[n].size(); i++) {
+            neuronGradient.push_back(delta[n] * mLastInputs[i]);
         }
+        weightGradientOut.push_back(neuronGradient);
+    }
+    biasGradientOut = delta;
+
+    for (size_t i = 0; i < mWeights[0].size(); i++) {
+        float sum = 0.0f;
+        for (size_t n = 0; n < mWeights.size(); n++) {
+            sum += mWeights[n][i] * delta[n];
+        }
+        downstreamGradientOut.push_back(sum);
     }
 }
 
-void Layer::update(float learningRate) {
-    for (Neuron& n : mNeurons) {
-        n.update(learningRate);
+void Layer::update(float learningRate, 
+                   const std::vector<std::vector<float>>& weightGradient, 
+                   const std::vector<float>& biasGradient) {
+    for (size_t n = 0; n < mWeights.size(); n++) {
+        for (size_t i = 0; i < mWeights[n].size(); i++) {
+            mWeights[n][i] = mWeights[n][i] - (learningRate * weightGradient[n][i]);
+        }
+        mBiases[n] = mBiases[n] - (learningRate * biasGradient[n]);
     }
 }
 
@@ -154,22 +125,10 @@ const std::vector<float>& Layer::getOutputs() const {
     return mOutputs;
 }
 
-const std::vector<float>& Layer::getBlame() const {
-    return mBlame;
-}
-
 double Layer::getWeightNormSquared() const {
     double sum = 0.0;
-    for (const Neuron& n : mNeurons) {
-        sum += n.getWeightNormSquared();
-    }
-    return sum;
-}
-
-double Layer::getGradientNormSquared() const {
-    double sum = 0.0;
-    for (const Neuron& n : mNeurons) {
-        sum += n.getGradientNormSquared();
+    for (size_t n = 0; n < mWeights.size(); n++) {
+        sum += getNeuronWeightNormSquared(mBiases[n], mWeights[n]);
     }
     return sum;
 }
@@ -189,16 +148,32 @@ void NeuralNet::feedForward(const std::vector<float>& inputs) {
     }
 }
 
-void NeuralNet::backpropagate(const std::vector<float>& errors) {
-    mLayers[mLayers.size()-1].backpropagate(errors);
+void NeuralNet::backpropagate(const std::vector<float>& errors,
+                              std::vector<std::vector<std::vector<float>>>& weightGradientsOut,
+                              std::vector<std::vector<float>>& biasGradientsOut) {
+    std::vector<std::vector<float>> weightGradients;
+    std::vector<float> biasGradient;
+    std::vector<float> downstreamGradient; 
+    mLayers[mLayers.size()-1].backpropagate(errors, weightGradients, biasGradient, downstreamGradient);
+    weightGradientsOut.push_back(weightGradients);
+    biasGradientsOut.push_back(biasGradient);
     for (int i = mLayers.size()-2; i >= 0; i--) {
-        mLayers[i].backpropagate(mLayers[i+1].getBlame());
+        std::vector<float> upstreamGradient = downstreamGradient;
+        weightGradients.clear();
+        biasGradient.clear();
+        downstreamGradient.clear();
+        mLayers[i].backpropagate(upstreamGradient, weightGradients, biasGradient, downstreamGradient);
+        weightGradientsOut.push_back(weightGradients);
+        biasGradientsOut.push_back(biasGradient);
     }
 }
 
-void NeuralNet::update(float learningRate) {
-    for (int i = mLayers.size()-1; i >= 0; i--) {
-        mLayers[i].update(learningRate);
+void NeuralNet::update(float learningRate,
+                       const std::vector<std::vector<std::vector<float>>>& weightGradients,
+                       const std::vector<std::vector<float>>& biasGradients) {
+    for (size_t i = 0; i < mLayers.size(); i++) {
+        int index = mLayers.size() - 1 - i;
+        mLayers[index].update(learningRate, weightGradients[i], biasGradients[i]);
     }
 }
 
@@ -206,19 +181,15 @@ const std::vector<float>& NeuralNet::getOutputs() const {
     return mLayers.back().getOutputs();
 }
 
-int Neuron::getNumInputs() const {
-    return mWeights.size();
-}
-
 int Layer::getNumInputs() const {
-    if (mNeurons.empty()) {
+    if (mWeights.empty()) {
         return 0;
     }
-    return mNeurons[0].getNumInputs();
+    return mWeights[0].size();
 }
 
 int Layer::getNumNeurons() const {
-    return mNeurons.size();
+    return mWeights.size();
 }
 
 std::vector<double> NeuralNet::getLayerWeightNormsSquared() const {
@@ -229,10 +200,20 @@ std::vector<double> NeuralNet::getLayerWeightNormsSquared() const {
     return ret;
 }
 
-std::vector<double> NeuralNet::getLayerGradientNormsSquared() const {
+std::vector<double> NeuralNet::getLayerGradientNormsSquared(
+            const std::vector<std::vector<float>>& netBiasGraidents,
+            const std::vector<std::vector<std::vector<float>>>& netWeightGradients) const {
     std::vector<double> ret;
-    for (size_t i = 0; i < mLayers.size(); i++) {
-        ret.push_back(mLayers[i].getGradientNormSquared());
+    for (size_t l = 0; l < netWeightGradients.size(); l++) {
+        double layerSum = 0.0;
+        for (size_t n = 0; n < netWeightGradients[l].size(); n++) {
+            double neuronSum = netBiasGraidents[l][n] * netBiasGraidents[l][n];
+            for (float c : netWeightGradients[l][n]) {
+                neuronSum += c * c;
+            }
+            layerSum += neuronSum;
+        }
+        ret.push_back(layerSum);
     }
     return ret;
 }

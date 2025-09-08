@@ -6,27 +6,6 @@
 #include <functional>
 #include <string>
 
-class Neuron {
-public:
-    Neuron(int num_inputs);
-    void fire(const std::vector<float>& inputs);
-    void backpropagate(float gradient, const std::vector<float>& inputs);
-    void update(float learningRate);
-    float getLogit() const;
-    const std::vector<float>& getBlame() const;
-    int getNumInputs() const;
-    double getWeightNormSquared() const;
-    double getGradientNormSquared() const;
-
-private:
-    float mBias;
-    float mBiasChange;
-    std::vector<float> mWeights;
-    std::vector<float> mWeightChanges;
-    std::vector<float> mBlame;
-    float mLogit;
-};
-
 enum class Activation {
     SIGMOID,
     RELU,
@@ -43,15 +22,20 @@ public:
     const std::vector<float>& getOutputs() const;
     int getNumInputs() const;
     int getNumNeurons() const;
-    void backpropagate(const std::vector<float>& errors);
-    void update(float learningRate);
+    void backpropagate(const std::vector<float>& errors,
+                       std::vector<std::vector<float>>& weightGradientOut,
+                       std::vector<float>& biasGradientOut,
+                       std::vector<float>& downstreamGradientOut);
+    void update(float learningRate,
+                const std::vector<std::vector<float>>& weightGradient, 
+                const std::vector<float>& biasGradient);
     const std::vector<float>& getBlame() const;
     double getWeightNormSquared() const;
-    double getGradientNormSquared() const;
 
 private:
-    std::vector<Neuron> mNeurons;
-    std::vector<float> mBlame;
+    std::vector<std::vector<float>> mWeights;
+    std::vector<float> mBiases;
+
     Activation mActivationType;
     std::vector<float> mOutputs;
     std::vector<float> mLastInputs;
@@ -66,11 +50,17 @@ class NeuralNet {
 public:
     NeuralNet(const std::vector<LayerSpecification>& topology);
     void feedForward(const std::vector<float>& inputs);
-    void backpropagate(const std::vector<float>& errors);
-    void update(float learningRate);
+    void backpropagate(const std::vector<float>& errors, 
+                       std::vector<std::vector<std::vector<float>>>& weightGradientsOut,
+                       std::vector<std::vector<float>>& biasGradientsOut);
+    void update(float learningRate, 
+                const std::vector<std::vector<std::vector<float>>>& weightGradients,
+                const std::vector<std::vector<float>>& biasGradients);
     const std::vector<float>& getOutputs() const;
     std::vector<double> getLayerWeightNormsSquared() const;
-    std::vector<double> getLayerGradientNormsSquared() const;
+    std::vector<double> getLayerGradientNormsSquared(
+            const std::vector<std::vector<float>>& netBiasGraidents,
+            const std::vector<std::vector<std::vector<float>>>& netWeightGradients) const;
 
 
     friend std::ostream& operator<<(std::ostream& os, const NeuralNet& net);
