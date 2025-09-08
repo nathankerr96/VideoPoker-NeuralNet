@@ -58,8 +58,6 @@ void Layer::backpropagate(const std::vector<float>& upstreamGradient,
                           std::vector<float>& biasGradientOut,
                           std::vector<float>& downstreamGradientOut) {
     std::vector<float> delta(mNumNeurons);
-    weightGradientOut.reserve(mNumInputs * mNumNeurons);
-    biasGradientOut.reserve(mNumNeurons);
     downstreamGradientOut.reserve(mNumNeurons);
 
     if (mActivationType == Activation::SOFTMAX) {
@@ -86,7 +84,7 @@ void Layer::backpropagate(const std::vector<float>& upstreamGradient,
     }
     for (int n = 0; n < mNumNeurons; n++) {
         for (int i = 0; i < mNumInputs; i++) {
-            weightGradientOut.push_back(delta[n] * mLastInputs[i]);
+            weightGradientOut[n*mNumInputs+i] = delta[n] * mLastInputs[i];
         }
     }
     biasGradientOut = delta;
@@ -132,6 +130,12 @@ NeuralNet::NeuralNet(const std::vector<LayerSpecification>& topology) {
                                 topology[i-1].numNeurons, 
                                 topology[i].activationType));
     }
+    mWeightGradients.resize(mLayers.size());
+    mBiasGradients.resize(mLayers.size());
+    for (size_t i = 0; i < mLayers.size(); i++) {
+        mWeightGradients[i].resize(mLayers[i].getNumInputs()*mLayers[i].getNumNeurons());
+        mBiasGradients[i].resize(mLayers[i].getNumNeurons());
+    }
 }
 
 void NeuralNet::feedForward(const std::vector<float>& inputs) {
@@ -141,32 +145,20 @@ void NeuralNet::feedForward(const std::vector<float>& inputs) {
     }
 }
 
-void NeuralNet::backpropagate(const std::vector<float>& errors,
-                              std::vector<std::vector<float>>& weightGradientsOut,
-                              std::vector<std::vector<float>>& biasGradientsOut) {
-    std::vector<float> weightGradients;
-    std::vector<float> biasGradient;
+void NeuralNet::backpropagate(const std::vector<float>& errors) {
     std::vector<float> downstreamGradient; 
-    mLayers[mLayers.size()-1].backpropagate(errors, weightGradients, biasGradient, downstreamGradient);
-    weightGradientsOut.push_back(weightGradients);
-    biasGradientsOut.push_back(biasGradient);
-    for (int i = mLayers.size()-2; i >= 0; i--) {
+    int last = mLayers.size() - 1;
+    mLayers[mLayers.size()-1].backpropagate(errors, mWeightGradients[last], mBiasGradients[last], downstreamGradient);
+    for (int i = last-1; i >= 0; i--) {
         std::vector<float> upstreamGradient = downstreamGradient;
-        weightGradients.clear();
-        biasGradient.clear();
         downstreamGradient.clear();
-        mLayers[i].backpropagate(upstreamGradient, weightGradients, biasGradient, downstreamGradient);
-        weightGradientsOut.push_back(weightGradients);
-        biasGradientsOut.push_back(biasGradient);
+        mLayers[i].backpropagate(upstreamGradient, mWeightGradients[i], mBiasGradients[i], downstreamGradient);
     }
 }
 
-void NeuralNet::update(float learningRate,
-                       const std::vector<std::vector<float>>& weightGradients,
-                       const std::vector<std::vector<float>>& biasGradients) {
-    for (size_t i = 0; i < mLayers.size(); i++) {
-        int index = mLayers.size() - 1 - i;
-        mLayers[index].update(learningRate, weightGradients[i], biasGradients[i]);
+void NeuralNet::update(float learningRate) {
+    for (int i = mLayers.size()-1; i >= 0; i--) {
+        mLayers[i].update(learningRate, mWeightGradients[i], mBiasGradients[i]);
     }
 }
 

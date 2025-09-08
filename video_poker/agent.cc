@@ -85,9 +85,7 @@ void Agent::train(const std::atomic<bool>& stopSignal, float learningRate) {
 
         float advantage = (score - baseline);
         std::vector<float> errors = mDiscardStrategy->calculateError(output, exchanges, advantage);
-        std::vector<std::vector<float>> layeredWeightGradients;
-        std::vector<std::vector<float>> layeredBiasGradients;
-        mNet.backpropagate(errors, layeredWeightGradients, layeredBiasGradients);
+        mNet.backpropagate(errors);
 
         if (mIterations % 1000 == 0) {
             float averageTotalScore = float(mTotalScore) / mIterations;
@@ -103,14 +101,14 @@ void Agent::train(const std::atomic<bool>& stopSignal, float learningRate) {
             mLogFile << mIterations << ",";
             mLogFile << averageTotalScore << ",";
             mLogFile << averageRecentScore << ",";
-            logAndPrintNorms(layeredWeightGradients, layeredBiasGradients);
+            //logAndPrintNorms();
             mLogFile << std::endl;
             std::cout << std::endl;
             recentTotal = 0;
             if (stopSignal) break; // Only stops on even multiples of 1000
         }
 
-        mNet.update(learningRate, layeredWeightGradients, layeredBiasGradients);
+        mNet.update(learningRate);
     }
 }
 

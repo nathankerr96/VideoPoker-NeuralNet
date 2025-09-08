@@ -52,12 +52,8 @@ class NeuralNet {
 public:
     NeuralNet(const std::vector<LayerSpecification>& topology);
     void feedForward(const std::vector<float>& inputs);
-    void backpropagate(const std::vector<float>& errors, 
-                       std::vector<std::vector<float>>& weightGradientsOut,
-                       std::vector<std::vector<float>>& biasGradientsOut);
-    void update(float learningRate, 
-                const std::vector<std::vector<float>>& weightGradients,
-                const std::vector<std::vector<float>>& biasGradients);
+    void backpropagate(const std::vector<float>& errors);
+    void update(float learningRate);
     const std::vector<float>& getOutputs() const;
     std::vector<double> getLayerWeightNormsSquared() const;
     std::vector<double> getLayerGradientNormsSquared(
@@ -68,6 +64,8 @@ public:
     friend std::ostream& operator<<(std::ostream& os, const NeuralNet& net);
 private:
     std::vector<Layer> mLayers;
+    std::vector<std::vector<float>> mWeightGradients;
+    std::vector<std::vector<float>> mBiasGradients;
 };
 
 std::ostream& operator<<(std::ostream& os, const std::vector<float>& v);
