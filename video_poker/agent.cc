@@ -85,7 +85,7 @@ void Agent::train(const std::atomic<bool>& stopSignal, float learningRate) {
 
         float advantage = (score - baseline);
         std::vector<float> errors = mDiscardStrategy->calculateError(output, exchanges, advantage);
-        std::vector<std::vector<std::vector<float>>> layeredWeightGradients;
+        std::vector<std::vector<float>> layeredWeightGradients;
         std::vector<std::vector<float>> layeredBiasGradients;
         mNet.backpropagate(errors, layeredWeightGradients, layeredBiasGradients);
 
@@ -160,7 +160,7 @@ void Agent::targetedEval() {
 }
 
 void Agent::logAndPrintNorms(
-        const std::vector<std::vector<std::vector<float>>>& layeredWeightGradients,
+        const std::vector<std::vector<float>>& layeredWeightGradients,
         const std::vector<std::vector<float>>& layeredBiasGradientsOut) {
     std::vector<double> weightNormsSquared = mNet.getLayerWeightNormsSquared();
     std::cout << "Weight Norms:" << std::endl;

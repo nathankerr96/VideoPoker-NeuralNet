@@ -54,10 +54,13 @@ void Layer::fire(const std::vector<float>& inputs) {
 }
 
 void Layer::backpropagate(const std::vector<float>& upstreamGradient,
-                          std::vector<std::vector<float>>& weightGradientOut,
+                          std::vector<float>& weightGradientOut,
                           std::vector<float>& biasGradientOut,
                           std::vector<float>& downstreamGradientOut) {
     std::vector<float> delta(mNumNeurons);
+    weightGradientOut.reserve(mNumInputs * mNumNeurons);
+    biasGradientOut.reserve(mNumNeurons);
+    downstreamGradientOut.reserve(mNumNeurons);
 
     if (mActivationType == Activation::SOFTMAX) {
         delta = upstreamGradient;
@@ -82,11 +85,9 @@ void Layer::backpropagate(const std::vector<float>& upstreamGradient,
         }
     }
     for (int n = 0; n < mNumNeurons; n++) {
-        std::vector<float> neuronGradient;
         for (int i = 0; i < mNumInputs; i++) {
-            neuronGradient.push_back(delta[n] * mLastInputs[i]);
+            weightGradientOut.push_back(delta[n] * mLastInputs[i]);
         }
-        weightGradientOut.push_back(neuronGradient);
     }
     biasGradientOut = delta;
 
@@ -100,11 +101,11 @@ void Layer::backpropagate(const std::vector<float>& upstreamGradient,
 }
 
 void Layer::update(float learningRate, 
-                   const std::vector<std::vector<float>>& weightGradient, 
+                   const std::vector<float>& weightGradient, 
                    const std::vector<float>& biasGradient) {
     for (int n = 0; n < mNumNeurons; n++) {
         for (int i = 0; i < mNumInputs; i++) {
-            mWeights[n*mNumInputs+i] = mWeights[n*mNumInputs+i] - (learningRate * weightGradient[n][i]);
+            mWeights[n*mNumInputs+i] = mWeights[n*mNumInputs+i] - (learningRate * weightGradient[n*mNumInputs+i]);
         }
         mBiases[n] = mBiases[n] - (learningRate * biasGradient[n]);
     }
@@ -141,9 +142,9 @@ void NeuralNet::feedForward(const std::vector<float>& inputs) {
 }
 
 void NeuralNet::backpropagate(const std::vector<float>& errors,
-                              std::vector<std::vector<std::vector<float>>>& weightGradientsOut,
+                              std::vector<std::vector<float>>& weightGradientsOut,
                               std::vector<std::vector<float>>& biasGradientsOut) {
-    std::vector<std::vector<float>> weightGradients;
+    std::vector<float> weightGradients;
     std::vector<float> biasGradient;
     std::vector<float> downstreamGradient; 
     mLayers[mLayers.size()-1].backpropagate(errors, weightGradients, biasGradient, downstreamGradient);
@@ -161,7 +162,7 @@ void NeuralNet::backpropagate(const std::vector<float>& errors,
 }
 
 void NeuralNet::update(float learningRate,
-                       const std::vector<std::vector<std::vector<float>>>& weightGradients,
+                       const std::vector<std::vector<float>>& weightGradients,
                        const std::vector<std::vector<float>>& biasGradients) {
     for (size_t i = 0; i < mLayers.size(); i++) {
         int index = mLayers.size() - 1 - i;
@@ -191,16 +192,15 @@ std::vector<double> NeuralNet::getLayerWeightNormsSquared() const {
 
 std::vector<double> NeuralNet::getLayerGradientNormsSquared(
             const std::vector<std::vector<float>>& netBiasGraidents,
-            const std::vector<std::vector<std::vector<float>>>& netWeightGradients) const {
+            const std::vector<std::vector<float>>& netWeightGradients) const {
     std::vector<double> ret;
     for (size_t l = 0; l < netWeightGradients.size(); l++) {
         double layerSum = 0.0;
-        for (size_t n = 0; n < netWeightGradients[l].size(); n++) {
-            double neuronSum = netBiasGraidents[l][n] * netBiasGraidents[l][n];
-            for (float c : netWeightGradients[l][n]) {
-                neuronSum += c * c;
-            }
-            layerSum += neuronSum;
+        for (float b : netBiasGraidents[l]) {
+            layerSum += b * b;
+        }
+        for (float w : netWeightGradients[l]) {
+            layerSum += w * w;
         }
         ret.push_back(layerSum);
     }
