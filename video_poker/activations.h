@@ -3,12 +3,12 @@
 
 #include <vector>
 
-std::vector<float> sigmoid(const std::vector<float>& logits);
-std::vector<float> sigmoid_derivative(const std::vector<float>& outputs);
+void sigmoid(const std::vector<float>& logits, std::vector<float>& out);
+void sigmoid_derivative(const std::vector<float>& outputs, std::vector<float>& out);
 
-std::vector<float> relu(const std::vector<float>& logits);
-std::vector<float> relu_derivative(const std::vector<float>& outputs);
+void relu(const std::vector<float>& logits, std::vector<float>& out);
+void relu_derivative(const std::vector<float>& outputs, std::vector<float>& out);
 
-std::vector<float> softmax(const std::vector<float>& logits);
+void softmax(const std::vector<float>& logits, std::vector<float>& out);
 
 #endif

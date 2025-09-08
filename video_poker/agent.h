@@ -35,8 +35,6 @@ private:
     std::ofstream mLogFile;
 
     std::vector<float> translateHand(const Hand& hand);
-    void logAndPrintNorms(
-        const std::vector<std::vector<float>>& layeredWeightGradients,
-        const std::vector<std::vector<float>>& layeredBiasGradientsOut);
+    void logAndPrintNorms();
 
 };

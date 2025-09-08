@@ -41,6 +41,9 @@ private:
     Activation mActivationType;
     std::vector<float> mOutputs;
     std::vector<float> mLastInputs;
+    std::vector<float> mLogits;
+    std::vector<float> mDelta;
+    std::vector<float> mOutputDerivatives;
 };
 
 struct LayerSpecification {
@@ -56,9 +59,7 @@ public:
     void update(float learningRate);
     const std::vector<float>& getOutputs() const;
     std::vector<double> getLayerWeightNormsSquared() const;
-    std::vector<double> getLayerGradientNormsSquared(
-            const std::vector<std::vector<float>>& netBiasGraidents,
-            const std::vector<std::vector<float>>& netWeightGradients) const;
+    std::vector<double> getLayerGradientNormsSquared() const;
 
 
     friend std::ostream& operator<<(std::ostream& os, const NeuralNet& net);
@@ -66,6 +67,8 @@ private:
     std::vector<Layer> mLayers;
     std::vector<std::vector<float>> mWeightGradients;
     std::vector<std::vector<float>> mBiasGradients;
+    std::vector<float> mBlameBufferA;
+    std::vector<float> mBlameBufferB;
 };
 
 std::ostream& operator<<(std::ostream& os, const std::vector<float>& v);

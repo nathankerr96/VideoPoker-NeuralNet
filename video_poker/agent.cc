@@ -101,7 +101,7 @@ void Agent::train(const std::atomic<bool>& stopSignal, float learningRate) {
             mLogFile << mIterations << ",";
             mLogFile << averageTotalScore << ",";
             mLogFile << averageRecentScore << ",";
-            //logAndPrintNorms();
+            logAndPrintNorms();
             mLogFile << std::endl;
             std::cout << std::endl;
             recentTotal = 0;
@@ -157,9 +157,7 @@ void Agent::targetedEval() {
     }
 }
 
-void Agent::logAndPrintNorms(
-        const std::vector<std::vector<float>>& layeredWeightGradients,
-        const std::vector<std::vector<float>>& layeredBiasGradientsOut) {
+void Agent::logAndPrintNorms() {
     std::vector<double> weightNormsSquared = mNet.getLayerWeightNormsSquared();
     std::cout << "Weight Norms:" << std::endl;
     double totalWeightNormSquared = 0.0;
@@ -170,7 +168,7 @@ void Agent::logAndPrintNorms(
     double globalWeightNorm = std::sqrt(totalWeightNormSquared);
     std::cout << "Overall Weight Norm: " <<  globalWeightNorm << std::endl;
 
-    std::vector<double> gradientNormsSquared = mNet.getLayerGradientNormsSquared(layeredBiasGradientsOut, layeredWeightGradients);
+    std::vector<double> gradientNormsSquared = mNet.getLayerGradientNormsSquared();
     std::cout << "Gradient Norms:" << std::endl;
     double totalGradientNormSquared = 0.0;
     for (size_t i = 0; i < gradientNormsSquared.size(); i++) {

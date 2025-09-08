@@ -12,7 +12,10 @@ Layer::Layer(int num_neurons,
              : mNumNeurons(num_neurons),
                mNumInputs(num_inputs),
                mBiases(std::vector<float>(num_neurons, 0.0f)), // Biases can start at 0 since weights break symmetry
-               mActivationType(activationType) {
+               mActivationType(activationType),
+               mLogits(num_neurons),
+               mDelta(num_neurons),
+               mOutputDerivatives(num_neurons) {
     std::random_device rd;
     std::mt19937 generator(rd());
     std::uniform_real_distribution<float> dis(-1.0, 1.0);
@@ -29,26 +32,25 @@ void Layer::fire(const std::vector<float>& inputs) {
         throw std::invalid_argument("Inputs != Weights");
     }
     mLastInputs = inputs;
-    std::vector<float> logits;
     for (int n = 0; n < mNumNeurons; n++) {
         float sum = mBiases[n];
         for (size_t i = 0; i < inputs.size(); i++) {
             sum += inputs[i] * mWeights[n*mNumInputs+i];
         }
-        logits.push_back(sum);
+        mLogits[n] = sum;
     }
     switch (mActivationType) {
         case Activation::LINEAR:
-            mOutputs = logits;
+            mOutputs = mLogits;
             break;
         case Activation::RELU:
-            mOutputs = relu(logits);
+            relu(mLogits, mOutputs);
             break;
         case Activation::SIGMOID:
-            mOutputs = sigmoid(logits);
+            sigmoid(mLogits, mOutputs);
             break;
         case Activation::SOFTMAX:
-            mOutputs = softmax(logits);
+            softmax(mLogits, mOutputs);
             break;
     }
 }
@@ -57,44 +59,41 @@ void Layer::backpropagate(const std::vector<float>& upstreamGradient,
                           std::vector<float>& weightGradientOut,
                           std::vector<float>& biasGradientOut,
                           std::vector<float>& downstreamGradientOut) {
-    std::vector<float> delta(mNumNeurons);
-    downstreamGradientOut.reserve(mNumNeurons);
-
     if (mActivationType == Activation::SOFTMAX) {
-        delta = upstreamGradient;
+        mDelta = upstreamGradient;
     } else {
-        std::vector<float> outputDerivatives;
         switch (mActivationType) {
             case Activation::LINEAR:
-                outputDerivatives = std::vector<float>(mOutputs.size(), 1.0f);
+                // mOutputDerivatives = std::vector<float>(mOutputs.size(), 1.0f);
+                std::fill(mOutputDerivatives.begin(), mOutputDerivatives.end(), 1.0f);
                 break;
             case Activation::RELU:
-                outputDerivatives = relu_derivative(mOutputs);
+                relu_derivative(mOutputs, mOutputDerivatives);
                 break;
             case Activation::SIGMOID:
-                outputDerivatives = sigmoid_derivative(mOutputs);
+                sigmoid_derivative(mOutputs, mOutputDerivatives);
                 break;
             case Activation::SOFTMAX:
                 // Errors vector is already final gradient, handled above.
                 break;
         }
         for (int n = 0; n < mNumNeurons; n++) {
-            delta[n] = outputDerivatives[n] * upstreamGradient[n];
+            mDelta[n] = mOutputDerivatives[n] * upstreamGradient[n];
         }
     }
     for (int n = 0; n < mNumNeurons; n++) {
         for (int i = 0; i < mNumInputs; i++) {
-            weightGradientOut[n*mNumInputs+i] = delta[n] * mLastInputs[i];
+            weightGradientOut[n*mNumInputs+i] = mDelta[n] * mLastInputs[i];
         }
     }
-    biasGradientOut = delta;
+    biasGradientOut = mDelta;
 
     for (int i = 0; i < mNumInputs; i++) {
         float sum = 0.0f;
         for (int n = 0; n < mNumNeurons; n++) {
-            sum += mWeights[n*mNumInputs+i] * delta[n];
+            sum += mWeights[n*mNumInputs+i] * mDelta[n];
         }
-        downstreamGradientOut.push_back(sum);
+        downstreamGradientOut[i] = sum;
     }
 }
 
@@ -132,10 +131,16 @@ NeuralNet::NeuralNet(const std::vector<LayerSpecification>& topology) {
     }
     mWeightGradients.resize(mLayers.size());
     mBiasGradients.resize(mLayers.size());
+    int maxNeurons = 0;
     for (size_t i = 0; i < mLayers.size(); i++) {
         mWeightGradients[i].resize(mLayers[i].getNumInputs()*mLayers[i].getNumNeurons());
         mBiasGradients[i].resize(mLayers[i].getNumNeurons());
+        if (mLayers[i].getNumNeurons() > maxNeurons) {
+            maxNeurons = mLayers[i].getNumNeurons();
+        }
     }
+    mBlameBufferA.resize(maxNeurons, 0.0f);
+    mBlameBufferB.resize(maxNeurons, 0.0f);
 }
 
 void NeuralNet::feedForward(const std::vector<float>& inputs) {
@@ -146,13 +151,14 @@ void NeuralNet::feedForward(const std::vector<float>& inputs) {
 }
 
 void NeuralNet::backpropagate(const std::vector<float>& errors) {
-    std::vector<float> downstreamGradient; 
+    std::vector<float>* upstreamGradient = nullptr;
+    std::vector<float>* downstreamGradient = &mBlameBufferA; 
     int last = mLayers.size() - 1;
-    mLayers[mLayers.size()-1].backpropagate(errors, mWeightGradients[last], mBiasGradients[last], downstreamGradient);
+    mLayers[mLayers.size()-1].backpropagate(errors, mWeightGradients[last], mBiasGradients[last], *downstreamGradient);
     for (int i = last-1; i >= 0; i--) {
-        std::vector<float> upstreamGradient = downstreamGradient;
-        downstreamGradient.clear();
-        mLayers[i].backpropagate(upstreamGradient, mWeightGradients[i], mBiasGradients[i], downstreamGradient);
+        upstreamGradient = downstreamGradient;
+        downstreamGradient = (upstreamGradient == &mBlameBufferA ? &mBlameBufferB : &mBlameBufferA);
+        mLayers[i].backpropagate(*upstreamGradient, mWeightGradients[i], mBiasGradients[i], *downstreamGradient);
     }
 }
 
@@ -182,16 +188,14 @@ std::vector<double> NeuralNet::getLayerWeightNormsSquared() const {
     return ret;
 }
 
-std::vector<double> NeuralNet::getLayerGradientNormsSquared(
-            const std::vector<std::vector<float>>& netBiasGraidents,
-            const std::vector<std::vector<float>>& netWeightGradients) const {
+std::vector<double> NeuralNet::getLayerGradientNormsSquared() const {
     std::vector<double> ret;
-    for (size_t l = 0; l < netWeightGradients.size(); l++) {
+    for (size_t l = 0; l < mWeightGradients.size(); l++) {
         double layerSum = 0.0;
-        for (float b : netBiasGraidents[l]) {
+        for (float b : mBiasGradients[l]) {
             layerSum += b * b;
         }
-        for (float w : netWeightGradients[l]) {
+        for (float w : mWeightGradients[l]) {
             layerSum += w * w;
         }
         ret.push_back(layerSum);
