@@ -4,6 +4,7 @@
 
 #include <vector>
 #include <string>
+#include <memory>
 
 class BaselineCalculator {
 public:
@@ -38,7 +39,8 @@ public:
     virtual void train(int score) override;
     virtual std::string getName() { return "Critic Network"; }
 private:
-    NeuralNet mNet;
+    std::unique_ptr<NeuralNet> mNet;
+    Trainer mTrainer;
     float mPrediction;
     float mLearningRate;
 };

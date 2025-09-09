@@ -24,18 +24,18 @@ void RunningAverageBaseline::train(int score) {
 }
 
 CriticNetworkBaseline::CriticNetworkBaseline(std::vector<LayerSpecification> topology, float learningRate)
-        : mNet(topology), mLearningRate(learningRate) {}
+        : mNet(std::make_unique<NeuralNet>(topology)), 
+          mTrainer(mNet.get()),
+          mLearningRate(learningRate) {}
 
 float CriticNetworkBaseline::predict(const std::vector<float>& inputs) {
-    mNet.feedForward(inputs);
-    mPrediction = mNet.getOutputs()[0];
+    mTrainer.feedForward(inputs);
+    mPrediction = mTrainer.getOutputs()[0];
     return mPrediction;
 }
 
 void CriticNetworkBaseline::train(int score) {
     float error = mPrediction - score;
-    std::vector<std::vector<float>> layeredWeightGradients;
-    std::vector<std::vector<float>> layeredBiasGradients;
-    mNet.backpropagate({error});
-    mNet.update(mLearningRate);
+    mTrainer.backpropagate({error});
+    mNet->update(mLearningRate, mTrainer.getWeightGradients(), mTrainer.getBiasGradients());
 }

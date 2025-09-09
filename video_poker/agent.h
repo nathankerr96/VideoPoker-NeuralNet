@@ -25,7 +25,7 @@ public:
     int getNumTrainingIterations();
 
 private:
-    NeuralNet mNet;
+    std::unique_ptr<NeuralNet> mNet;
     VideoPoker mPoker;
     std::mt19937 mRng;
     std::unique_ptr<DecisionStrategy> mDiscardStrategy;
@@ -35,6 +35,6 @@ private:
     std::ofstream mLogFile;
 
     std::vector<float> translateHand(const Hand& hand);
-    void logAndPrintNorms();
+    void logAndPrintNorms(const Trainer& trainer);
 
 };

@@ -18,18 +18,23 @@ public:
     Layer(int num_neurons, 
           int num_inputs, 
           Activation activationtype);
-    void fire(const std::vector<float>& inputs);
+    void fire(const std::vector<float>& inputs,
+              std::vector<float>& logitsBuffer,
+              std::vector<float>& outputs) const;
     const std::vector<float>& getOutputs() const;
     int getNumInputs() const;
     int getNumNeurons() const;
     void backpropagate(const std::vector<float>& errors,
+                       const std::vector<float>& layerInputs,
+                       const std::vector<float>& layerActivations,
+                       std::vector<float>& deltaBuffer,
+                       std::vector<float>& outputDerivativesBuffer,
                        std::vector<float>& weightGradientOut,
                        std::vector<float>& biasGradientOut,
-                       std::vector<float>& downstreamGradientOut);
+                       std::vector<float>& downstreamGradientOut) const;
     void update(float learningRate,
                 const std::vector<float>& weightGradient, 
                 const std::vector<float>& biasGradient);
-    const std::vector<float>& getBlame() const;
     double getWeightNormSquared() const;
 
 private:
@@ -37,13 +42,7 @@ private:
     int mNumInputs;
     std::vector<float> mWeights;
     std::vector<float> mBiases;
-
     Activation mActivationType;
-    std::vector<float> mOutputs;
-    std::vector<float> mLastInputs;
-    std::vector<float> mLogits;
-    std::vector<float> mDelta;
-    std::vector<float> mOutputDerivatives;
 };
 
 struct LayerSpecification {
@@ -54,22 +53,46 @@ struct LayerSpecification {
 class NeuralNet {
 public:
     NeuralNet(const std::vector<LayerSpecification>& topology);
-    void feedForward(const std::vector<float>& inputs);
-    void backpropagate(const std::vector<float>& errors);
-    void update(float learningRate);
-    const std::vector<float>& getOutputs() const;
+    void feedForward(const std::vector<float>& inputs) const;
+    void update(float learningRate,
+        const std::vector<std::vector<float>>& weightGradients,
+        const std::vector<std::vector<float>>& biasGradients);
     std::vector<double> getLayerWeightNormsSquared() const;
-    std::vector<double> getLayerGradientNormsSquared() const;
+    const std::vector<Layer>& getLayers();
 
 
     friend std::ostream& operator<<(std::ostream& os, const NeuralNet& net);
 private:
     std::vector<Layer> mLayers;
+};
+
+class Trainer {
+public:
+    Trainer(NeuralNet* net);
+    // void trainOneHand();
+    std::vector<double> getLayerGradientNormsSquared() const;
+
+    // TODO: Encapsulate training logic and make these private.
+    void feedForward(const std::vector<float>& inputs);
+    void backpropagate(const std::vector<float>& errors);
+    const std::vector<float>& getOutputs();
+    const std::vector<std::vector<float>>& getWeightGradients();
+    const std::vector<std::vector<float>>& getBiasGradients();
+
+private:
+
+    NeuralNet* mNet;
+
     std::vector<std::vector<float>> mWeightGradients;
     std::vector<std::vector<float>> mBiasGradients;
+    std::vector<float> mLogitsBuffer;
+    std::vector<std::vector<float>> mActivations;
     std::vector<float> mBlameBufferA;
     std::vector<float> mBlameBufferB;
+    std::vector<float> mDeltaBuffer;
+    std::vector<float> mOutputDerivativesBuffer;
 };
+
 
 std::ostream& operator<<(std::ostream& os, const std::vector<float>& v);
 std::ostream& operator<<(std::ostream& os, const std::vector<bool>& v);
