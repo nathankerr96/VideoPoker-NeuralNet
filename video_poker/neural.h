@@ -1,5 +1,4 @@
-#ifndef NEURAL_H
-#define NEURAL_H
+#pragma once
 
 #include <vector>
 #include <iostream>
@@ -66,36 +65,8 @@ private:
     std::vector<Layer> mLayers;
 };
 
-class Trainer {
-public:
-    Trainer(NeuralNet* net);
-    std::vector<double> getLayerGradientNormsSquared() const;
-
-    void feedForward(const std::vector<float>& inputs);
-    void backpropagate(const std::vector<float>& errors);
-    void reset();
-    const std::vector<float>& getOutputs();
-    std::vector<std::vector<float>>& getTotalWeightGradients();
-    std::vector<std::vector<float>>& getTotalBiasGradients();
-
-private:
-
-    NeuralNet* mNet;
-
-    std::vector<std::vector<float>> mTotalWeightGradients;
-    std::vector<std::vector<float>> mTotalBiasGradients;
-    std::vector<float> mLogitsBuffer;
-    std::vector<std::vector<float>> mActivations;
-    std::vector<float> mBlameBufferA;
-    std::vector<float> mBlameBufferB;
-    std::vector<float> mDeltaBuffer;
-    std::vector<float> mOutputDerivativesBuffer;
-};
-
 
 std::ostream& operator<<(std::ostream& os, const std::vector<float>& v);
 std::ostream& operator<<(std::ostream& os, const std::vector<bool>& v);
 std::ostream& operator<<(std::ostream& os, const LayerSpecification& l);
 std::ostream& operator<<(std::ostream& os, const std::vector<LayerSpecification>& v);
-
-#endif

@@ -4,6 +4,7 @@
 #include "poker.h"
 #include "decision.h"
 #include "baseline.h"
+#include "trainer.h"
 
 #include <random>
 #include <vector>
@@ -20,14 +21,13 @@ public:
           float learningRate,
           std::unique_ptr<BaselineCalculator> baselineCalc);
     void train(const std::atomic<bool>& stopSignal, float learningRate);
-    void randomEval(int iterations);
-    void targetedEval();
-    int getNumTrainingIterations();
+    void randomEval(int iterations, std::mt19937& rng) const;
+    void targetedEval(std::mt19937& rng) const;
+    int getNumTrainingIterations() const;
 
 private:
     std::unique_ptr<NeuralNet> mNet;
-    VideoPoker mPoker;
-    std::mt19937 mRng;
+    std::vector<std::mt19937> mRngs; // Per worker RNG engine
     std::unique_ptr<DecisionStrategy> mDiscardStrategy;
     std::unique_ptr<BaselineCalculator> mBaselineCalculator;
     std::atomic<int> mIterations;
@@ -35,7 +35,6 @@ private:
     std::atomic<int> mRecentTotal;
     std::ofstream mLogFile;
 
-    std::vector<float> translateHand(const Hand& hand);
+    std::vector<float> translateHand(const Hand& hand) const;
     void logAndPrintNorms(const Trainer& trainer);
-
 };

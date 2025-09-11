@@ -1,6 +1,7 @@
 #pragma once
 
 #include "neural.h"
+#include "trainer.h"
 
 #include <vector>
 #include <string>

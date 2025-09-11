@@ -2,6 +2,7 @@
 
 #include "neural.h"
 #include "poker.h"
+#include "trainer.h"
 
 #include <random>
 #include <vector>
@@ -23,8 +24,6 @@ Agent::Agent(const std::vector<LayerSpecification>& topology,
              float learningRate, 
              std::unique_ptr<BaselineCalculator> baselineCalc)
         : mNet(std::make_unique<NeuralNet>(topology)),
-          mPoker(VideoPoker()),
-          mRng(seed),
           mBaselineCalculator(std::move(baselineCalc)),
           mIterations(0),
           mTotalScore(0),
@@ -58,9 +57,17 @@ Agent::Agent(const std::vector<LayerSpecification>& topology,
         }
         mLogFile << std::endl;
     }
+
+    // RNG engines for the worker threads (so they aren't dealt the same hands)
+    std::seed_seq seq {seed};
+    std::vector<uint32_t> seeds(NUM_WORKERS);
+    seq.generate(seeds.begin(), seeds.end());
+    for (int i = 0; i < NUM_WORKERS; i++) {
+        mRngs.push_back(std::mt19937(seeds[i]));
+    }
 }
 
-std::vector<float> Agent::translateHand(const Hand& hand) {
+std::vector<float> Agent::translateHand(const Hand& hand) const {
     std::vector<float> ret(85, 0.0f);
     for (int i=0; i < 5; i++) {
         Card c = hand[i];
@@ -125,11 +132,12 @@ void Agent::train(const std::atomic<bool>& stopSignal, float learningRate) {
                 float baseline = mBaselineCalculator->predict(input);
                 t.feedForward(input);
                 const std::vector<float>& output = t.getOutputs();
-                std::vector<bool> exchanges = mDiscardStrategy->selectAction(output, mRng, true);
+                std::vector<bool> exchanges = mDiscardStrategy->selectAction(output, mRngs[workerId], true);
                 Hand e = vp.exchange(exchanges);
 
                 int score = vp.score(vp.getHandType(e));
                 mBaselineCalculator->train(score);
+                mTotalScore += score;
                 mRecentTotal += score;
                 if (mIterations.fetch_add(1) % 10000 == 0) {
                     int recentTotalLocal = mRecentTotal.exchange(0); // Minor race condition, but only used for monitoring.
@@ -175,32 +183,33 @@ void Agent::train(const std::atomic<bool>& stopSignal, float learningRate) {
     }
 }
 
-int Agent::getNumTrainingIterations() {
+int Agent::getNumTrainingIterations() const {
     return mIterations;
 }
 
-void Agent::randomEval(int iterations) {
+void Agent::randomEval(int iterations, std::mt19937& rng) const {
+    VideoPoker vp;
     std::cout << "---Starting Eval, " <<  iterations << " iterations.---" << std::endl;
     int total_score = 0;
     Trainer trainer(mNet.get()); // TODO: This shouldn't have to go through trainer.
     for (int i = 0; i < iterations; i++) {
-        Hand h = mPoker.deal();
+        Hand h = vp.deal();
         std::vector<float> input = translateHand(h);
         trainer.feedForward(input);
         const std::vector<float>& output = trainer.getOutputs();
-        std::vector<bool> exchanges = mDiscardStrategy->selectAction(output, mRng, false);
-        h = mPoker.exchange(exchanges);
+        std::vector<bool> exchanges = mDiscardStrategy->selectAction(output, rng, false);
+        h = vp.exchange(exchanges);
         if ((i+1) % 10000 == 0) {
             std::cout << "Games Played: " << (i+1) << ", Total Score: " << total_score << std::endl;
         }
-        int score = mPoker.score(mPoker.getHandType(h));
+        int score = vp.score(vp.getHandType(h));
         total_score += score;
     }
     std::cout << "---Average Score: " << float(total_score) / iterations << "---" << std::endl << std::endl;
 }
 
 
-void Agent::targetedEval() {
+void Agent::targetedEval(std::mt19937& rng) const {
     std::vector<std::pair<std::string, Hand>> hands {
         {"Junk", {{{{CLUB, 2}, {SPADE, 7}, {HEART, 10}, {CLUB, 4}, {DIAMOND, 8}}}}},
         {"Pair", {{{{CLUB, 2}, {SPADE, 2}, {HEART, 10}, {CLUB, 4}, {DIAMOND, 8}}}}},
@@ -216,7 +225,7 @@ void Agent::targetedEval() {
         std::vector<float> output = trainer.getOutputs();
         std::cout << h.first << ": " << h.second << std::endl;
         std::cout << "Outputs: " << trainer.getOutputs() << std::endl;
-        std::vector<bool> exchanges = mDiscardStrategy->selectAction(output, mRng, false);
+        std::vector<bool> exchanges = mDiscardStrategy->selectAction(output, rng, false);
         std::cout << "Decision: " << exchanges << std::endl;
     }
 }

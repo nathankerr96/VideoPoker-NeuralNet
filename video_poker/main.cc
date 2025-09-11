@@ -60,6 +60,7 @@ std::unique_ptr<BaselineCalculator> getCriticNetworkBaseline() {
 
 int main() {
     std::random_device rd {};
+    std::mt19937 rng {rd()};
 
     Agent agent {
         SOFTMAX_TOPOLOGY, 
@@ -82,8 +83,8 @@ int main() {
             t.join();
             std::cout << "Agent Iterations: " << agent.getNumTrainingIterations() << std::endl;
         } else if (input == "eval") {
-            agent.randomEval(EVAL_ITERATIONS);
-            agent.targetedEval();
+            agent.randomEval(EVAL_ITERATIONS, rng);
+            agent.targetedEval(rng);
         } else if (input == "exit") {
             break;
         } else {
