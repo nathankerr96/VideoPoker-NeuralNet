@@ -37,5 +37,5 @@ float CriticNetworkBaseline::predict(const std::vector<float>& inputs) {
 void CriticNetworkBaseline::train(int score) {
     float error = mPrediction - score;
     mTrainer.backpropagate({error});
-    mNet->update(mLearningRate, mTrainer.getWeightGradients(), mTrainer.getBiasGradients());
+    mNet->update(mLearningRate, mTrainer.getTotalWeightGradients(), mTrainer.getTotalBiasGradients());
 }

@@ -30,8 +30,9 @@ private:
     std::mt19937 mRng;
     std::unique_ptr<DecisionStrategy> mDiscardStrategy;
     std::unique_ptr<BaselineCalculator> mBaselineCalculator;
-    int mIterations;
-    int mTotalScore;
+    std::atomic<int> mIterations;
+    std::atomic<int> mTotalScore;
+    std::atomic<int> mRecentTotal;
     std::ofstream mLogFile;
 
     std::vector<float> translateHand(const Hand& hand);

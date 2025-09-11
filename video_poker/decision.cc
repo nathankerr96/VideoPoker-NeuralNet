@@ -73,7 +73,7 @@ int ThirtyTwoNeuronStrategy::selectDiscardCombination(const std::vector<float>& 
         float target = uniform_zero_to_one(rng);
         for (size_t i = 0; i < netOutputs.size(); i++) {
             target -= netOutputs[i];
-            if (target < 0) {
+            if (target <= 0) {
                 return i;
             }
         }

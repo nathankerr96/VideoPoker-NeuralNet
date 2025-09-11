@@ -69,22 +69,21 @@ private:
 class Trainer {
 public:
     Trainer(NeuralNet* net);
-    // void trainOneHand();
     std::vector<double> getLayerGradientNormsSquared() const;
 
-    // TODO: Encapsulate training logic and make these private.
     void feedForward(const std::vector<float>& inputs);
     void backpropagate(const std::vector<float>& errors);
+    void reset();
     const std::vector<float>& getOutputs();
-    const std::vector<std::vector<float>>& getWeightGradients();
-    const std::vector<std::vector<float>>& getBiasGradients();
+    std::vector<std::vector<float>>& getTotalWeightGradients();
+    std::vector<std::vector<float>>& getTotalBiasGradients();
 
 private:
 
     NeuralNet* mNet;
 
-    std::vector<std::vector<float>> mWeightGradients;
-    std::vector<std::vector<float>> mBiasGradients;
+    std::vector<std::vector<float>> mTotalWeightGradients;
+    std::vector<std::vector<float>> mTotalBiasGradients;
     std::vector<float> mLogitsBuffer;
     std::vector<std::vector<float>> mActivations;
     std::vector<float> mBlameBufferA;

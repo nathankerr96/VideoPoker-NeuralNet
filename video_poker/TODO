@@ -1,0 +1,7 @@
+TODO:
+Support batched actor-critic training
+Move Gradient Norm Calculation to batch aggregation step
+
+
+To Consider:
+Parallelize reduce in completion step

@@ -13,7 +13,7 @@
 #include <ctime>
 
 #define INPUT_SIZE 85
-#define LEARNING_RATE 0.002
+#define LEARNING_RATE 0.03
 #define EVAL_ITERATIONS 100000
 #define LOGS_DIR "logs/"
 #define LOG_NAME  "TimingTest"
@@ -66,8 +66,8 @@ int main() {
         getLogName(), 
         rd(), 
         LEARNING_RATE,
-        // getRunningAverageBaseline()
-        getCriticNetworkBaseline(),
+        getRunningAverageBaseline(),
+        // getCriticNetworkBaseline(),
     };
 
     std::string input;

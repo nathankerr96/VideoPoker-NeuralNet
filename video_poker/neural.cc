@@ -84,10 +84,10 @@ void Layer::backpropagate(const std::vector<float>& upstreamGradient,
     }
     for (int n = 0; n < mNumNeurons; n++) {
         for (int i = 0; i < mNumInputs; i++) {
-            weightGradientOut[n*mNumInputs+i] = deltaBuffer[n] * layerInputs[i];
+            weightGradientOut[n*mNumInputs+i] += deltaBuffer[n] * layerInputs[i];
         }
+        biasGradientOut[n] += deltaBuffer[n];
     }
-    biasGradientOut = deltaBuffer;
 
     for (int i = 0; i < mNumInputs; i++) {
         float sum = 0.0f;
@@ -166,14 +166,14 @@ std::vector<double> NeuralNet::getLayerWeightNormsSquared() const {
 
 Trainer::Trainer(NeuralNet* net) : mNet(net) {
     const std::vector<Layer>& layers = net->getLayers();
-    mWeightGradients.resize(layers.size());
-    mBiasGradients.resize(layers.size());
+    mTotalWeightGradients.resize(layers.size());
+    mTotalBiasGradients.resize(layers.size());
     mActivations.resize(layers.size()+1); // +1 since the first "activation" is the input.
     mActivations[0].resize(layers[0].getNumInputs());
     int maxNeurons = 0;
     for (size_t i = 0; i < layers.size(); i++) {
-        mWeightGradients[i].resize(layers[i].getNumInputs()*layers[i].getNumNeurons());
-        mBiasGradients[i].resize(layers[i].getNumNeurons());
+        mTotalWeightGradients[i].resize(layers[i].getNumInputs()*layers[i].getNumNeurons(), 0.0f);
+        mTotalBiasGradients[i].resize(layers[i].getNumNeurons(), 0.0f);
         mActivations[i+1].resize(layers[i].getNumNeurons());
         if (layers[i].getNumNeurons() > maxNeurons) {
             maxNeurons = layers[i].getNumNeurons();
@@ -196,8 +196,8 @@ void Trainer::backpropagate(const std::vector<float>& errors) {
                                mActivations[last+1],
                                mDeltaBuffer, 
                                mOutputDerivativesBuffer, 
-                               mWeightGradients[last], 
-                               mBiasGradients[last], 
+                               mTotalWeightGradients[last], 
+                               mTotalBiasGradients[last], 
                                *downstreamGradient);
     for (int i = last-1; i >= 0; i--) {
         upstreamGradient = downstreamGradient;
@@ -207,9 +207,16 @@ void Trainer::backpropagate(const std::vector<float>& errors) {
                                 mActivations[i+1],
                                 mDeltaBuffer, 
                                 mOutputDerivativesBuffer, 
-                                mWeightGradients[i], 
-                                mBiasGradients[i], 
+                                mTotalWeightGradients[i], 
+                                mTotalBiasGradients[i], 
                                 *downstreamGradient);
+    }
+}
+
+void Trainer::reset() {
+    for(size_t i = 0; i < mNet->getLayers().size(); i++) {
+        std::fill(mTotalWeightGradients[i].begin(), mTotalWeightGradients[i].end(), 0.0f);
+        std::fill(mTotalBiasGradients[i].begin(), mTotalBiasGradients[i].end(), 0.0f);
     }
 }
 
@@ -226,22 +233,22 @@ const std::vector<float>& Trainer::getOutputs() {
     return mActivations.back();
 }
 
-const std::vector<std::vector<float>>& Trainer::getWeightGradients() {
-    return mWeightGradients;
+std::vector<std::vector<float>>& Trainer::getTotalWeightGradients() {
+    return mTotalWeightGradients;
 }
 
-const std::vector<std::vector<float>>& Trainer::getBiasGradients() {
-    return mBiasGradients;
+std::vector<std::vector<float>>& Trainer::getTotalBiasGradients() {
+    return mTotalBiasGradients;
 }
 
 std::vector<double> Trainer::getLayerGradientNormsSquared() const {
     std::vector<double> ret;
-    for (size_t l = 0; l < mWeightGradients.size(); l++) {
+    for (size_t l = 0; l < mTotalWeightGradients.size(); l++) {
         double layerSum = 0.0;
-        for (float b : mBiasGradients[l]) {
+        for (float b : mTotalBiasGradients[l]) {
             layerSum += b * b;
         }
-        for (float w : mWeightGradients[l]) {
+        for (float w : mTotalWeightGradients[l]) {
             layerSum += w * w;
         }
         ret.push_back(layerSum);
