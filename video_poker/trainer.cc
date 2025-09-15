@@ -51,6 +51,30 @@ void Trainer::backpropagate(const std::vector<float>& errors) {
     }
 }
 
+void Trainer::aggregate(Trainer& other) {
+    const std::vector<std::vector<float>>& weightGradients = other.getTotalWeightGradients();
+    const std::vector<std::vector<float>>& biasGradients = other.getTotalBiasGradients();
+    for (size_t l = 0; l < weightGradients.size(); l++) {
+        for (size_t w = 0; w < weightGradients[l].size(); w++) {
+            mTotalWeightGradients[l][w] += weightGradients[l][w];
+        }
+        for (size_t w = 0; w < biasGradients[l].size(); w++) {
+            mTotalBiasGradients[l][w] += biasGradients[l][w];
+        }
+    }
+}
+
+void Trainer::batch(int batchSize) {
+    for (size_t l = 0; l < mTotalWeightGradients.size(); l++) {
+        for (size_t w = 0; w < mTotalWeightGradients[l].size(); w++) {
+            mTotalWeightGradients[l][w] /= batchSize;
+        }
+        for (size_t w = 0; w < mTotalBiasGradients[l].size(); w++) {
+            mTotalBiasGradients[l][w] /= batchSize;
+        }
+    }
+}
+
 void Trainer::reset() {
     for(size_t i = 0; i < mNet->getLayers().size(); i++) {
         std::fill(mTotalWeightGradients[i].begin(), mTotalWeightGradients[i].end(), 0.0f);

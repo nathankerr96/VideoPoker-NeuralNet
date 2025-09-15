@@ -54,21 +54,24 @@ std::unique_ptr<BaselineCalculator> getRunningAverageBaseline() {
     return std::make_unique<RunningAverageBaseline>();
 }
 
-std::unique_ptr<BaselineCalculator> getCriticNetworkBaseline() {
-    return std::make_unique<CriticNetworkBaseline>(CRITIC_NETWORK_TOPOLOGY, CRITIC_NETWORK_LEARNING_RATE);
+std::unique_ptr<BaselineCalculator> getCriticNetworkBaseline(NeuralNet* net) {
+    return std::make_unique<CriticNetworkBaseline>(net, CRITIC_NETWORK_LEARNING_RATE);
 }
 
 int main() {
     std::random_device rd {};
     std::mt19937 rng {rd()};
 
+    // TODO: Create all Neural Nets in the same place (i.e. main or agent).
+    std::unique_ptr<NeuralNet> criticNetwork = std::make_unique<NeuralNet>(CRITIC_NETWORK_TOPOLOGY);
+    std::function<std::unique_ptr<BaselineCalculator>()> criticNetworkFactory = std::bind(getCriticNetworkBaseline, criticNetwork.get());
+
     Agent agent {
-        SOFTMAX_TOPOLOGY, 
+        SOFTMAX_TOPOLOGY,
         getLogName(), 
         rd(), 
         LEARNING_RATE,
-        getRunningAverageBaseline(),
-        // getCriticNetworkBaseline(),
+        criticNetworkFactory,
     };
 
     std::string input;

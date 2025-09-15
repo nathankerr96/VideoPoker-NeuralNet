@@ -17,14 +17,15 @@
 
 constexpr int NUM_WORKERS = 8;
 constexpr int NUM_IN_BATCH = 5;
+constexpr int BATCH_SIZE = NUM_WORKERS * NUM_IN_BATCH;
 
 Agent::Agent(const std::vector<LayerSpecification>& topology, 
              std::string fileName, 
              unsigned int seed, 
              float learningRate, 
-             std::unique_ptr<BaselineCalculator> baselineCalc)
+             std::function<std::unique_ptr<BaselineCalculator>()> baselineFactory)
         : mNet(std::make_unique<NeuralNet>(topology)),
-          mBaselineCalculator(std::move(baselineCalc)),
+          mBaselineFactory(baselineFactory),
           mIterations(0),
           mTotalScore(0),
           mLogFile(fileName) {
@@ -47,7 +48,7 @@ Agent::Agent(const std::vector<LayerSpecification>& topology,
     } else {
         mLogFile << "Topology " << std::endl << topology << std::endl;
         mLogFile << "Learning Rate," << learningRate << std::endl << std::endl;
-        mLogFile << "Baseline Calculator, " << mBaselineCalculator->getName() << std::endl;
+        // mLogFile << "Baseline Calculator, " << mBaselineCalculator->getName() << std::endl;
         mLogFile << "Iterations,TotalAvgScore,RecentAvgScore,GlobalWeightNorm,GlobalGradientNorm,";
         for (size_t i = 1; i < topology.size(); i++) {
             mLogFile << "Layer" << i << "WeightNorm,";
@@ -77,42 +78,22 @@ std::vector<float> Agent::translateHand(const Hand& hand) const {
     return ret;
 }
 
-// Stored in place in the first vector of the trainers
-void calculateAggregatedGradients(std::vector<Trainer>& trainers) {
-        std::vector<std::vector<float>>& aggregatedWeightGradients = trainers[0].getTotalWeightGradients();
-        std::vector<std::vector<float>>& aggregatedBiasGradients = trainers[0].getTotalBiasGradients();
-        for (size_t i = 1; i < trainers.size(); i++) {
-            const std::vector<std::vector<float>>& weightGradients = trainers[i].getTotalWeightGradients();
-            const std::vector<std::vector<float>>& biasGradients = trainers[i].getTotalBiasGradients();
-            for (size_t l = 0; l < weightGradients.size(); l++) {
-                for (size_t w = 0; w < weightGradients[l].size(); w++) {
-                    aggregatedWeightGradients[l][w] += weightGradients[l][w];
-                }
-                for (size_t w = 0; w < biasGradients[l].size(); w++) {
-                    aggregatedBiasGradients[l][w] += biasGradients[l][w];
-                }
-            }
-        }
-        for (size_t l = 0; l < aggregatedWeightGradients.size(); l++) {
-            int batchSize = NUM_WORKERS * NUM_IN_BATCH;
-            for (size_t w = 0; w < aggregatedWeightGradients[l].size(); w++) {
-                aggregatedWeightGradients[l][w] /= batchSize;
-            }
-            for (size_t w = 0; w < aggregatedBiasGradients[l].size(); w++) {
-                aggregatedBiasGradients[l][w] /= batchSize;
-            }
-        }
-}
-
 
 void Agent::train(const std::atomic<bool>& stopSignal, float learningRate) {
 
     std::mutex vectorMutex;
     std::vector<Trainer> trainers(NUM_WORKERS, Trainer(mNet.get()));
+    std::vector<std::unique_ptr<BaselineCalculator>> baselineCalcs;
+    baselineCalcs.reserve(NUM_WORKERS);
+    std::generate_n(std::back_inserter(baselineCalcs), NUM_WORKERS, mBaselineFactory);
 
     auto completionStep = [&]() {
-        calculateAggregatedGradients(trainers);
+        for (size_t i = 1; i < trainers.size(); i++) {
+            trainers[0].aggregate(trainers[i]);
+        }
+        trainers[0].batch(BATCH_SIZE);
         mNet->update(learningRate, trainers[0].getTotalWeightGradients(), trainers[0].getTotalBiasGradients());
+        baselineCalcs[0]->update(baselineCalcs, BATCH_SIZE);
     };
 
 
@@ -129,14 +110,14 @@ void Agent::train(const std::atomic<bool>& stopSignal, float learningRate) {
             for (int i = 0; i < NUM_IN_BATCH; i++) {
                 Hand h = vp.deal();
                 std::vector<float> input = translateHand(h);
-                float baseline = mBaselineCalculator->predict(input);
+                float baseline = baselineCalcs[workerId]->predict(input);
                 t.feedForward(input);
                 const std::vector<float>& output = t.getOutputs();
                 std::vector<bool> exchanges = mDiscardStrategy->selectAction(output, mRngs[workerId], true);
                 Hand e = vp.exchange(exchanges);
 
                 int score = vp.score(vp.getHandType(e));
-                mBaselineCalculator->train(score);
+                baselineCalcs[workerId]->train(score);
                 mTotalScore += score;
                 mRecentTotal += score;
                 if (mIterations.fetch_add(1) % 10000 == 0) {

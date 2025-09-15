@@ -8,9 +8,6 @@ float FlatBaseline::predict(const std::vector<float>& inputs) {
     return 0.1f;
 }
 
-void FlatBaseline::train(int score) { /*No-op*/ }
-
-
 float RunningAverageBaseline::predict(const std::vector<float>& inputs) {
     if (mCount == 0) {
         return 0.33f; // EV of random action
@@ -23,9 +20,9 @@ void RunningAverageBaseline::train(int score) {
     mCount += 1;
 }
 
-CriticNetworkBaseline::CriticNetworkBaseline(std::vector<LayerSpecification> topology, float learningRate)
-        : mNet(std::make_unique<NeuralNet>(topology)), 
-          mTrainer(mNet.get()),
+CriticNetworkBaseline::CriticNetworkBaseline(NeuralNet* net, float learningRate)
+        : mNet(net), 
+          mTrainer(net),
           mLearningRate(learningRate) {}
 
 float CriticNetworkBaseline::predict(const std::vector<float>& inputs) {
@@ -37,5 +34,20 @@ float CriticNetworkBaseline::predict(const std::vector<float>& inputs) {
 void CriticNetworkBaseline::train(int score) {
     float error = mPrediction - score;
     mTrainer.backpropagate({error});
+}
+
+void CriticNetworkBaseline::update(std::vector<std::unique_ptr<BaselineCalculator>>& otherCalcs, int batchSize) {
+    for (size_t i = 1; i < otherCalcs.size(); i++) {
+        // Icky encasulation breaking :( -- Crash if wrong type (bad_cast exception)
+        CriticNetworkBaseline* otherCriticBaseline = dynamic_cast<CriticNetworkBaseline*>(otherCalcs[i].get());
+        if (otherCriticBaseline == nullptr) {
+            std::cerr << "Received wrong baseline calculator type in Critic Network Update" << std::endl;
+            throw std::bad_cast();
+        }
+        mTrainer.aggregate(otherCriticBaseline->mTrainer);
+        otherCriticBaseline->mTrainer.reset();
+    }
+    mTrainer.batch(batchSize);
     mNet->update(mLearningRate, mTrainer.getTotalWeightGradients(), mTrainer.getTotalBiasGradients());
+    mTrainer.reset();
 }

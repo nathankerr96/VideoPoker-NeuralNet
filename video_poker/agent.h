@@ -19,7 +19,7 @@ public:
           std::string fileName, 
           unsigned int seed, 
           float learningRate,
-          std::unique_ptr<BaselineCalculator> baselineCalc);
+          std::function<std::unique_ptr<BaselineCalculator>()> baselineFactory);
     void train(const std::atomic<bool>& stopSignal, float learningRate);
     void randomEval(int iterations, std::mt19937& rng) const;
     void targetedEval(std::mt19937& rng) const;
@@ -29,7 +29,7 @@ private:
     std::unique_ptr<NeuralNet> mNet;
     std::vector<std::mt19937> mRngs; // Per worker RNG engine
     std::unique_ptr<DecisionStrategy> mDiscardStrategy;
-    std::unique_ptr<BaselineCalculator> mBaselineCalculator;
+    std::function<std::unique_ptr<BaselineCalculator>()> mBaselineFactory;
     std::atomic<int> mIterations;
     std::atomic<int> mTotalScore;
     std::atomic<int> mRecentTotal;
