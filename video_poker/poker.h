@@ -1,5 +1,4 @@
-#ifndef POKER_H
-#define POKER_H
+#pragma once
 
 #include <vector>
 #include <array>
@@ -78,5 +77,3 @@ private:
     // in progress
     // 
 };
-
-#endif // POKER_H

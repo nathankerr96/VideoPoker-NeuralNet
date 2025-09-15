@@ -3,6 +3,7 @@
 #include "neural.h"
 #include "poker.h"
 #include "trainer.h"
+#include "hyperparams.h"
 
 #include <random>
 #include <vector>
@@ -15,22 +16,18 @@
 #include <thread>
 #include <mutex>
 
-constexpr int NUM_WORKERS = 8;
-constexpr int NUM_IN_BATCH = 5;
-constexpr int BATCH_SIZE = NUM_WORKERS * NUM_IN_BATCH;
-
-Agent::Agent(const std::vector<LayerSpecification>& topology, 
+Agent::Agent(const HyperParameters& config,
              std::string fileName, 
              unsigned int seed, 
-             float learningRate, 
              std::function<std::unique_ptr<BaselineCalculator>()> baselineFactory)
-        : mNet(std::make_unique<NeuralNet>(topology)),
+        : mConfig(config),
+          mNet(std::make_unique<NeuralNet>(config.actorTopology)),
           mBaselineFactory(baselineFactory),
           mIterations(0),
           mTotalScore(0),
           mLogFile(fileName) {
-    assert(topology[0].numNeurons == 85); // Hard dependency by hand translation layer.
-    int outputSize = topology.back().numNeurons;
+    assert(config.actorTopology[0].numNeurons == 85); // Hard dependency by hand translation layer.
+    int outputSize = config.actorTopology.back().numNeurons;
     switch (outputSize) {
         case 5:
             mDiscardStrategy = std::make_unique<FiveNeuronStrategy>();
@@ -46,14 +43,14 @@ Agent::Agent(const std::vector<LayerSpecification>& topology,
     if (!mLogFile.is_open()) {
         std::cerr << "Could not open Log file!" << std::endl;
     } else {
-        mLogFile << "Topology " << std::endl << topology << std::endl;
-        mLogFile << "Learning Rate," << learningRate << std::endl << std::endl;
+        mLogFile << "Topology " << std::endl << config.actorTopology << std::endl;
+        mLogFile << "Learning Rate," << config.actorLearningRate << std::endl << std::endl;
         // mLogFile << "Baseline Calculator, " << mBaselineCalculator->getName() << std::endl;
         mLogFile << "Iterations,TotalAvgScore,RecentAvgScore,GlobalWeightNorm,GlobalGradientNorm,";
-        for (size_t i = 1; i < topology.size(); i++) {
+        for (size_t i = 1; i < config.actorTopology.size(); i++) {
             mLogFile << "Layer" << i << "WeightNorm,";
         }
-        for (size_t i = 1; i < topology.size(); i++) {
+        for (size_t i = 1; i < config.actorTopology.size(); i++) {
             mLogFile << "Layer" << i << "GradientNorm,";
         }
         mLogFile << std::endl;
@@ -61,9 +58,9 @@ Agent::Agent(const std::vector<LayerSpecification>& topology,
 
     // RNG engines for the worker threads (so they aren't dealt the same hands)
     std::seed_seq seq {seed};
-    std::vector<uint32_t> seeds(NUM_WORKERS);
+    std::vector<uint32_t> seeds(mConfig.numWorkers);
     seq.generate(seeds.begin(), seeds.end());
-    for (int i = 0; i < NUM_WORKERS; i++) {
+    for (int i = 0; i < mConfig.numWorkers; i++) {
         mRngs.push_back(std::mt19937(seeds[i]));
     }
 }
@@ -79,25 +76,25 @@ std::vector<float> Agent::translateHand(const Hand& hand) const {
 }
 
 
-void Agent::train(const std::atomic<bool>& stopSignal, float learningRate) {
+void Agent::train(const std::atomic<bool>& stopSignal) {
 
     std::mutex vectorMutex;
-    std::vector<Trainer> trainers(NUM_WORKERS, Trainer(mNet.get()));
+    std::vector<Trainer> trainers(mConfig.numWorkers, Trainer(mNet.get()));
     std::vector<std::unique_ptr<BaselineCalculator>> baselineCalcs;
-    baselineCalcs.reserve(NUM_WORKERS);
-    std::generate_n(std::back_inserter(baselineCalcs), NUM_WORKERS, mBaselineFactory);
+    baselineCalcs.reserve(mConfig.numWorkers);
+    std::generate_n(std::back_inserter(baselineCalcs), mConfig.numWorkers, mBaselineFactory);
 
     auto completionStep = [&]() {
         for (size_t i = 1; i < trainers.size(); i++) {
             trainers[0].aggregate(trainers[i]);
         }
-        trainers[0].batch(BATCH_SIZE);
-        mNet->update(learningRate, trainers[0].getTotalWeightGradients(), trainers[0].getTotalBiasGradients());
-        baselineCalcs[0]->update(baselineCalcs, BATCH_SIZE);
+        trainers[0].batch(mConfig.getBatchSize());
+        mNet->update(mConfig.actorLearningRate, trainers[0].getTotalWeightGradients(), trainers[0].getTotalBiasGradients());
+        baselineCalcs[0]->update(baselineCalcs, mConfig.getBatchSize());
     };
 
 
-    std::barrier barrier(NUM_WORKERS, completionStep);
+    std::barrier barrier(mConfig.numWorkers, completionStep);
 
 
     auto trainingLoop = [&](int workerId) {
@@ -107,7 +104,7 @@ void Agent::train(const std::atomic<bool>& stopSignal, float learningRate) {
         while (true) { // Break when stopSignal is set.
             t.reset(); // Clear accumulated gradients
 
-            for (int i = 0; i < NUM_IN_BATCH; i++) {
+            for (int i = 0; i < mConfig.getBatchSize(); i++) {
                 Hand h = vp.deal();
                 std::vector<float> input = translateHand(h);
                 float baseline = baselineCalcs[workerId]->predict(input);
@@ -155,7 +152,7 @@ void Agent::train(const std::atomic<bool>& stopSignal, float learningRate) {
     };
 
     std::vector<std::thread> threads;
-    for (int i = 0; i < NUM_WORKERS; i++) {
+    for (int i = 0; i < mConfig.numWorkers; i++) {
         threads.emplace_back(std::thread(trainingLoop, i));
     }
     for (std::thread& t: threads) {

@@ -2,6 +2,7 @@
 #include "activations.h"
 #include "poker.h"
 #include "agent.h"
+#include "hyperparams.h"
 
 #include <iostream>
 #include <random>
@@ -12,38 +13,14 @@
 #include <chrono>
 #include <ctime>
 
-#define INPUT_SIZE 85
-#define LEARNING_RATE 0.03
 #define EVAL_ITERATIONS 100000
 #define LOGS_DIR "logs/"
-#define LOG_NAME  "TimingTest"
-#define CRITIC_NETWORK_LEARNING_RATE 0.005
 
-std::vector<LayerSpecification> SOFTMAX_TOPOLOGY {
-    {INPUT_SIZE, Activation::LINEAR},
-    {170, Activation::RELU},
-    {170, Activation::RELU},
-    {32, Activation::SOFTMAX},
-};
-
-std::vector<LayerSpecification> SIGMOID_TOPOLOGY {
-    {INPUT_SIZE, Activation::LINEAR},
-    {170, Activation::RELU},
-    {170, Activation::RELU},
-    {5, Activation::SIGMOID},
-};
-
-std::vector<LayerSpecification> CRITIC_NETWORK_TOPOLOGY {
-    {INPUT_SIZE, Activation::LINEAR},
-    {85, Activation::RELU},
-    {1, Activation::LINEAR},
-};
-
-std::string getLogName() {
+std::string getLogName(std::string actorName) {
     const auto now = std::chrono::system_clock::now();
     std::time_t now_c = std::chrono::system_clock::to_time_t(now);
     std::string timeString = std::to_string(now_c);
-    return std::string(LOGS_DIR) + std::string(LOG_NAME) + "-" + timeString + ".csv";
+    return std::string(LOGS_DIR) + actorName + "-" + timeString + ".csv";
 }
 
 std::unique_ptr<BaselineCalculator> getFlatBaseline() {
@@ -54,24 +31,36 @@ std::unique_ptr<BaselineCalculator> getRunningAverageBaseline() {
     return std::make_unique<RunningAverageBaseline>();
 }
 
-std::unique_ptr<BaselineCalculator> getCriticNetworkBaseline(NeuralNet* net) {
-    return std::make_unique<CriticNetworkBaseline>(net, CRITIC_NETWORK_LEARNING_RATE);
+std::unique_ptr<BaselineCalculator> getCriticNetworkBaseline(NeuralNet* net, float learningRate) {
+    return std::make_unique<CriticNetworkBaseline>(net, learningRate);
 }
 
 int main() {
     std::random_device rd {};
     std::mt19937 rng {rd()};
 
+    HyperParameters config = Softmax_CriticNetwork_SingleBatch;
+
     // TODO: Create all Neural Nets in the same place (i.e. main or agent).
     std::unique_ptr<NeuralNet> criticNetwork = std::make_unique<NeuralNet>(CRITIC_NETWORK_TOPOLOGY);
-    std::function<std::unique_ptr<BaselineCalculator>()> criticNetworkFactory = std::bind(getCriticNetworkBaseline, criticNetwork.get());
+    std::function<std::unique_ptr<BaselineCalculator>()> baselineFactory;
+    switch(config.baselineCalculatorType) {
+        case FLAT:
+            baselineFactory = getFlatBaseline;
+            break;
+        case RUNNING_AVERAGE:
+            baselineFactory = getRunningAverageBaseline;
+            break;
+        case CRITIC_NETWORK:
+            baselineFactory = std::bind(getCriticNetworkBaseline, criticNetwork.get(), config.criticLearningRate);
+            break;
+    }
 
     Agent agent {
-        SOFTMAX_TOPOLOGY,
-        getLogName(), 
+        config,
+        getLogName(config.name), 
         rd(), 
-        LEARNING_RATE,
-        criticNetworkFactory,
+        baselineFactory,
     };
 
     std::string input;
@@ -79,7 +68,7 @@ int main() {
     while (std::getline(std::cin, input)) {
         if (input == "train") {
             std::atomic<bool> stopSignal(false);
-            std::thread t = std::thread([&agent, &stopSignal](){agent.train(stopSignal, LEARNING_RATE);});
+            std::thread t = std::thread([&agent, &stopSignal](){agent.train(stopSignal);});
             std::string unused;
             std::getline(std::cin, unused);
             stopSignal = true;

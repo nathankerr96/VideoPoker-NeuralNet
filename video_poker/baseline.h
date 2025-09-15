@@ -7,6 +7,12 @@
 #include <string>
 #include <memory>
 
+enum BaselineCalculatorType {
+    FLAT,
+    RUNNING_AVERAGE,
+    CRITIC_NETWORK,
+};
+
 class BaselineCalculator {
 public:
     virtual ~BaselineCalculator() = default;

@@ -12,7 +12,7 @@ all: default
 APP_SOURCES = main.cc poker.cc neural.cc activations.cc agent.cc decision.cc baseline.cc trainer.cc
 APP_OBJECTS = $(patsubst %.cc, $(BINDIR)/%.o, $(APP_SOURCES))
 
-HEADERS = poker.h neural.h activations.h agent.h decision.h baseline.h trainer.h
+HEADERS = poker.h neural.h activations.h agent.h decision.h baseline.h trainer.h hyperparams.h
 
 $(BINDIR)/%.o: %.cc $(HEADERS)
 	@mkdir -p $(BINDIR)

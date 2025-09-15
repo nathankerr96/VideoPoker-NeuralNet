@@ -1,5 +1,4 @@
-#ifndef ACTIVATIONS_H
-#define ACTIVATIONS_H
+#pragma once
 
 #include <vector>
 
@@ -10,5 +9,3 @@ void relu(const std::vector<float>& logits, int numNeurons, std::vector<float>& 
 void relu_derivative(const std::vector<float>& outputs, std::vector<float>& out);
 
 void softmax(const std::vector<float>& logits, int numNeurons, std::vector<float>& out);
-
-#endif
