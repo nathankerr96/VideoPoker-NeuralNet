@@ -1,5 +1,6 @@
 #include "decision.h"
 
+#include <iostream>
 #include <vector>
 #include <random>
 #include <cassert>
@@ -77,7 +78,8 @@ int ThirtyTwoNeuronStrategy::selectDiscardCombination(const std::vector<float>& 
                 return i;
             }
         }
-        assert(false);
+        std::cerr << "Reached end of selection loop. Remaining target: " << target << std::endl;
+        return netOutputs.size() -1;
     } else {
         return std::distance(netOutputs.begin(), std::max_element(netOutputs.begin(), netOutputs.end()));
     }

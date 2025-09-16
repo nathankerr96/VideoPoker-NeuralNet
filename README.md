@@ -81,9 +81,32 @@ This provided a much more stable reward signal and allowed the model to break th
 ![Average Score Over Time](charts/85-170(Sig)-170(Sig)-32(Soft),%20Critic%20Network%20Baseline,%20Score%20Over%20Time%20(Disabled%20Royal%20Flush).png)
 [Raw Data w/ Gradients](https://docs.google.com/spreadsheets/d/1bjb3qHKBfUTXn8QfzdyFB1FvXzHEB-JoWbKcmvbBGQA/edit?gid=767602707#gid=767602707)
 
+#### Mini-Batching
+
+To provide a more stable training signal to the model, we can run multiple iterations at the current policy and average all of the resultant gradients before making an update to the model. This technique is called mini-batching and also gives us a natural place to parallelize the training process (many workers running backpropagation at the same time). It also allows us to increase the training rate since the updates should be closer to the "true" gradient.
+
+The following graph compares a model making batched updates with different learning rates against the previous 1 example per update model. Royal flushes are still disabled for now. The goal of this step is to check how the larger batch size affects the optimal learning rate.
+
+|Config|Actor Learning Rate|Critic Learning Rate|Batch Size|Comments|
+|---|---|---|---|---|
+|Not Batched|0.002|0.003|1|Same as Before|
+|Slow|0.002|0.003|32|Same as Non-Batched|
+|Medium|0.01|0.015|32||
+|Fast|0.064|0.096|32|Linear Scaling Rule|
+
+![Mini-Batching Comparison](charts/BatchedLearningRates.png)
+
+Standard guidance seems to indicate that the learning rate should scale linearly with the batch size, however as can be seen in the chart this appears to be too high for the current model architecture. The warm-up period is much faster, however it appears to get stuck in a local minimum quickly and even shows signs of regressing.
+
+The slow learning rate (i.e. unchanged from the non-batched version) shows similar, although slightly better, performance as the non-batched version. It is a little quicker to find a basic working policy and settles on a policy that has a higher RoC than the non-batched version. It also appears to keep learning even after 10M iterations, eventually breaking through 0.58 RoC.
+
+The happy medium learning rate saw by far the best performance yet. It was very quick to learn the basic policy and was already pushing 0.6 RoC after ~2.5M iterations whereas the non-batched version was still at 0.5 RoC. By the end of training, the RoC of the policy was ~0.62-- a new record.
+
+It should be noted that the batching is not fully parallelized on my machine, and has an increased cost to aggregate all of the gradients. So # of batches should not be viewed as a comparison of wall-clock training time, just a # of updates to the model.
 
 ### Up Next
 
-* Mini-batching
+* Epsilon-Greedy Annealing to promote exploration
 * Stabilizing reward signals
 * Experimenting with Wider/Deeper Networks
+* Experience Replay Buffer to capture "surprising" training examples.
