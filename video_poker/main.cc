@@ -39,7 +39,19 @@ int main() {
     std::random_device rd {};
     std::mt19937 rng {rd()};
 
-    HyperParameters config = Softmax_CriticNetwork_SingleBatch;
+    std::cout << "Select Config:" << std::endl;
+    for (size_t i = 0; i < AvailableConfigs.size(); i++) {
+        std::cout << "\t" << i << ": " << AvailableConfigs[i].name << std::endl;
+    }
+    int selection = -1;
+    std::cin >> selection;
+    std::cin.ignore();
+    if (selection < 0 || selection > std::ssize(AvailableConfigs)-1) {
+        std::cout << "Invalid selection: " << selection << std::endl;
+        exit(1);
+    }
+    HyperParameters config = AvailableConfigs[selection];
+    std::cout << "Loading " << config.name << std::endl;
 
     // TODO: Create all Neural Nets in the same place (i.e. main or agent).
     std::unique_ptr<NeuralNet> criticNetwork = std::make_unique<NeuralNet>(CRITIC_NETWORK_TOPOLOGY);

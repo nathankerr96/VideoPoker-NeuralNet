@@ -47,18 +47,40 @@ inline std::vector<LayerSpecification> CRITIC_NETWORK_TOPOLOGY {
     {1, Activation::LINEAR},
 };
 
-const HyperParameters Softmax_CriticNetwork_Batched {
-    .name = "170-170-Softmax-Critic_Network-32_Batch",
+const HyperParameters Softmax_CriticNetwork_32Batch_Slow {
+    .name = "170-170-Softmax-Critic_Network-32_Batch-Slow",
     .actorTopology = SOFTMAX_TOPOLOGY,
-    .actorLearningRate = 0.03f,
+    .actorLearningRate = 0.002f,
     .baselineCalculatorType = CRITIC_NETWORK,
     .criticTopology = CRITIC_NETWORK_TOPOLOGY,
-    .criticLearningRate = 0.04f,
+    .criticLearningRate = 0.003f,
     .numWorkers = 8,
     .numInBatch = 4,
 };
 
-const HyperParameters Softmax_CriticNetwork_SingleBatch {
+const HyperParameters Softmax_CriticNetwork_32Batch_Med {
+    .name = "170-170-Softmax-Critic_Network-32_Batch-Med",
+    .actorTopology = SOFTMAX_TOPOLOGY,
+    .actorLearningRate = 0.01f,
+    .baselineCalculatorType = CRITIC_NETWORK,
+    .criticTopology = CRITIC_NETWORK_TOPOLOGY,
+    .criticLearningRate = 0.015f,
+    .numWorkers = 8,
+    .numInBatch = 4,
+};
+
+const HyperParameters Softmax_CriticNetwork_32Batch_Fast {
+    .name = "170-170-Softmax-Critic_Network-32_Batch-Fast",
+    .actorTopology = SOFTMAX_TOPOLOGY,
+    .actorLearningRate = 0.064f,
+    .baselineCalculatorType = CRITIC_NETWORK,
+    .criticTopology = CRITIC_NETWORK_TOPOLOGY,
+    .criticLearningRate = 0.096f,
+    .numWorkers = 8,
+    .numInBatch = 4,
+};
+
+const HyperParameters Softmax_CriticNetwork_1Batch {
     .name = "170-170-Softmax-Critic_Network-1_Batch",
     .actorTopology = SOFTMAX_TOPOLOGY,
     .actorLearningRate = 0.002f,
@@ -67,4 +89,11 @@ const HyperParameters Softmax_CriticNetwork_SingleBatch {
     .criticLearningRate = 0.003f,
     .numWorkers = 1,
     .numInBatch = 1,
+};
+
+inline std::vector<HyperParameters> AvailableConfigs {
+    Softmax_CriticNetwork_32Batch_Slow,
+    Softmax_CriticNetwork_32Batch_Med,
+    Softmax_CriticNetwork_32Batch_Fast,
+    Softmax_CriticNetwork_1Batch,
 };

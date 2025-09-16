@@ -73,7 +73,4 @@ private:
     Deck mDeck;
     Hand mHand;
     bool mInProgress = false;
-    // payout table
-    // in progress
-    // 
 };
