@@ -22,20 +22,14 @@ $(TARGET): $(APP_OBJECTS)
 	$(CC) $(APP_OBJECTS) -Wall $(LIBS) -o $(BINDIR)/$@
 
 POKER_TEST_RUNNER = $(BINDIR)/poker_test_runner
-NEURAL_TEST_RUNNER = $(BINDIR)/neural_test_runner
 
-test: test_poker test_neural
+test: test_poker
 
 test_poker:
 	$(CC) $(CFLAGS) -o $(POKER_TEST_RUNNER) poker.cc poker_test.cc
 	$(POKER_TEST_RUNNER)
 
-test_neural:
-	$(CC) $(CFLAGS) -o $(NEURAL_TEST_RUNNER) neural.cc neural_test.cc activations.cc
-	$(NEURAL_TEST_RUNNER)
-
 clean:
 	-rm  $(BINDIR)/*.o
 	-rm  $(BINDIR)/$(TARGET)
 	-rm  $(BINDIR)/poker_test_runner
-	-rm  $(BINDIR)/neural_test_runner

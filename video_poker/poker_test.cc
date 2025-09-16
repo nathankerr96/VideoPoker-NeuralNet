@@ -1,12 +1,14 @@
 #include <iostream>
 #include <cassert>
 #include <sstream>
+#include <random>
 
 #include "poker.h"
 
 
 void testDraw() {
-    Deck d{};
+    std::mt19937 rng {1};
+    Deck d {rng};
     Card c1 = d.draw();
     assert(c1.suit == Suit::CLUB);
     assert(c1.rank == 2);
@@ -16,8 +18,10 @@ void testDraw() {
 }
 
 void testShuffle() {
-    Deck d{};
-    Deck d2{};
+    std::mt19937 rng1 {1};
+    std::mt19937 rng2 {2};
+    Deck d {rng1};
+    Deck d2 {rng2};
     d2.shuffle();
     assert(d != d2);
 }
@@ -32,7 +36,8 @@ void testCardOstream() {
 }
 
 void testVideoPokerHand() {
-    VideoPoker vp{};
+    std::mt19937 rng {1};
+    VideoPoker vp {rng};
     const Hand& hand = vp.deal();
     std::cout << hand << std::endl;
     vp.exchange({true, false, true, true, false});
@@ -40,7 +45,8 @@ void testVideoPokerHand() {
 }
 
 void testHands() {
-    VideoPoker vp{};
+    std::mt19937 rng {1};
+    VideoPoker vp {rng};
     Hand max_hand;
     int max_value = 0;
     for (int i = 0; i < 10000000; i++) {
@@ -61,7 +67,8 @@ void testHands() {
 }
 
 void test_scoring() {
-    VideoPoker vp{};
+    std::mt19937 rng {1};
+    VideoPoker vp {rng};
     int total = 0;
     for (int i = 0; i < 1000; i++) {
         Hand h = vp.deal();
@@ -75,7 +82,8 @@ void test_scoring() {
 }
 
 void test_royal_flush() {
-    VideoPoker vp {};
+    std::mt19937 rng {1};
+    VideoPoker vp {rng};
     Hand h;
     h[0] = {Suit::CLUB, 10};
     h[1] = {Suit::CLUB, 11};

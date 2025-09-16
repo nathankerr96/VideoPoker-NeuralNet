@@ -53,7 +53,7 @@ std::ostream& operator<<(std::ostream& os, const Card& card) {
     return os;
 }
 
-Deck::Deck() {
+Deck::Deck(std::mt19937& rng) : mRandomGenerator(rng) {
     mDeck.reserve(52);
     for (int s = 0; s < 4; s++) {
         for (int r = 2 ; r <= 14; r++) {

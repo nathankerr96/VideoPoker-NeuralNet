@@ -37,17 +37,16 @@ bool operator!=(const Card& lhs, const Card& rhs);
 
 class Deck {
 public:
-    Deck();
+    Deck(std::mt19937& rng);
     void shuffle();
     Card draw();
     bool operator==(const Deck& other) const;
     bool operator!=(const Deck& other) const;
 
 private:
+    std::mt19937& mRandomGenerator;
     std::vector<Card> mDeck;
     int mIndex = 0;
-    std::mt19937 mRandomGenerator {2242};
-
 };
 
 class Hand {
@@ -64,6 +63,7 @@ std::ostream& operator<<(std::ostream& os, const Hand& hand);
 
 class VideoPoker {
 public:
+    VideoPoker(std::mt19937& rng) : mDeck(rng) {}
     const Hand& deal();
     const Hand& exchange(const std::vector<bool>& ex);
     PokerHand getHandType(const Hand& hand);

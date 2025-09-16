@@ -27,7 +27,7 @@ Agent::Agent(const HyperParameters& config,
           mBaselineFactory(baselineFactory),
           mLogFile(fileName),
           mRng(seed),
-          mVideoPoker()
+          mVideoPoker(mRng)
 {
     assert(config.actorTopology[0].numNeurons == 85); // Hard dependency by hand translation layer.
     int outputSize = config.actorTopology.back().numNeurons;
@@ -142,7 +142,7 @@ void Agent::train(const std::atomic<bool>& stopSignal) {
 
 
     auto trainingLoop = [&](int workerId) {
-        VideoPoker vp;
+        VideoPoker vp {mRngs[workerId]};
         Trainer& t = trainers[workerId];
 
         while (true) { // Break when stopSignal is set.
@@ -190,7 +190,7 @@ int Agent::getNumTrainingIterations() const {
 }
 
 void Agent::randomEval(int iterations, std::mt19937& rng) const {
-    VideoPoker vp;
+    VideoPoker vp {rng};
     std::cout << "---Starting Eval, " <<  iterations << " iterations.---" << std::endl;
     int total_score = 0;
     Trainer trainer(mNet.get()); // TODO: This shouldn't have to go through trainer.
