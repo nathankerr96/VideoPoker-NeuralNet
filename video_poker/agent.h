@@ -13,6 +13,7 @@
 #include <atomic>
 #include <string>
 #include <fstream>
+#include <chrono>
 
 class Agent {
 public:
@@ -40,6 +41,7 @@ private:
     std::atomic<int> mRecentTotal = 0;
     std::atomic<int> mIterations = 0;
     int mNumBatches = 0; // Only called from single-threaded completion step.
+    std::chrono::duration<double> mTotalTrainingTime {};
 
     std::vector<float> translateHand(const Hand& hand) const;
     // Should be called after gradient aggregation but before reset! (Else gradient norm == 0)

@@ -14,9 +14,9 @@
 #include <string>
 #include <barrier>
 #include <thread>
-#include <mutex>
+#include <chrono>
 
-#define LOG_STEP 500
+#define LOG_STEP 2000
 
 Agent::Agent(const HyperParameters& config,
              std::string fileName, 
@@ -117,8 +117,8 @@ void Agent::logProgress(Trainer& t, BaselineCalculator* baselineCalc) {
 
 
 void Agent::train(const std::atomic<bool>& stopSignal) {
+    auto trainingStartTime = std::chrono::steady_clock::now();
 
-    std::mutex vectorMutex;
     std::vector<Trainer> trainers(mConfig.numWorkers, Trainer(mNet.get()));
     std::vector<std::unique_ptr<BaselineCalculator>> baselineCalcs;
     baselineCalcs.reserve(mConfig.numWorkers);
@@ -183,6 +183,10 @@ void Agent::train(const std::atomic<bool>& stopSignal) {
         // Main thread will set stopSignal to end training.
         t.join();
     }
+
+    std::chrono::duration<double> trainingSeconds = std::chrono::steady_clock::now() - trainingStartTime;
+    mTotalTrainingTime += trainingSeconds;
+    std::cout << "Training time (this/total): " << trainingSeconds << " / " << mTotalTrainingTime << std::endl;
 }
 
 int Agent::getNumTrainingIterations() const {
