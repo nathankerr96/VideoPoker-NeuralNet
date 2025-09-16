@@ -31,11 +31,18 @@ private:
     std::vector<std::mt19937> mRngs; // Per worker RNG engine
     std::unique_ptr<DecisionStrategy> mDiscardStrategy;
     std::function<std::unique_ptr<BaselineCalculator>()> mBaselineFactory;
-    std::atomic<int> mIterations;
-    std::atomic<int> mTotalScore;
-    std::atomic<int> mRecentTotal;
     std::ofstream mLogFile;
+    // Agent-level RNG and Poker client for sample hands and Evals. Worker threads have separate copies.
+    std::mt19937 mRng;
+    VideoPoker mVideoPoker;
+    // Progress indicators
+    std::atomic<int> mTotalScore = 0;
+    std::atomic<int> mRecentTotal = 0;
+    std::atomic<int> mIterations = 0;
+    int mNumBatches = 0; // Only called from single-threaded completion step.
 
     std::vector<float> translateHand(const Hand& hand) const;
+    // Should be called after gradient aggregation but before reset! (Else gradient norm == 0)
+    void logProgress(Trainer& t, BaselineCalculator* baselineCalc);
     void logAndPrintNorms(const Trainer& trainer);
 };

@@ -16,6 +16,8 @@
 #include <thread>
 #include <mutex>
 
+#define LOG_STEP 500
+
 Agent::Agent(const HyperParameters& config,
              std::string fileName, 
              unsigned int seed, 
@@ -23,9 +25,10 @@ Agent::Agent(const HyperParameters& config,
         : mConfig(config),
           mNet(std::make_unique<NeuralNet>(config.actorTopology)),
           mBaselineFactory(baselineFactory),
-          mIterations(0),
-          mTotalScore(0),
-          mLogFile(fileName) {
+          mLogFile(fileName),
+          mRng(seed),
+          mVideoPoker()
+{
     assert(config.actorTopology[0].numNeurons == 85); // Hard dependency by hand translation layer.
     int outputSize = config.actorTopology.back().numNeurons;
     switch (outputSize) {
@@ -46,7 +49,7 @@ Agent::Agent(const HyperParameters& config,
         mLogFile << "Topology " << std::endl << config.actorTopology << std::endl;
         mLogFile << "Learning Rate," << config.actorLearningRate << std::endl << std::endl;
         // mLogFile << "Baseline Calculator, " << mBaselineCalculator->getName() << std::endl;
-        mLogFile << "Iterations,TotalAvgScore,RecentAvgScore,GlobalWeightNorm,GlobalGradientNorm,";
+        mLogFile << "Batches,Hands,TotalAvgScore,RecentAvgScore,GlobalWeightNorm,GlobalGradientNorm,";
         for (size_t i = 1; i < config.actorTopology.size(); i++) {
             mLogFile << "Layer" << i << "WeightNorm,";
         }
@@ -76,6 +79,43 @@ std::vector<float> Agent::translateHand(const Hand& hand) const {
 }
 
 
+// TODO: These params should be made const, either by directly referencing the underlying NeuralNet or
+// adding const equivalent functions (default feedforward saves activations for backprop).
+void Agent::logProgress(Trainer& t, BaselineCalculator* baselineCalc) {
+    float averageTotalScore = float(mTotalScore) / mIterations;
+    std::cout << "Thread: " << std::this_thread::get_id() << "--- ";
+    std::cout << "Batches: " << mNumBatches << ", Hands: " << mIterations << ", Average Score: " << averageTotalScore << std::endl;
+    float averageRecentScore = float(mRecentTotal) / (LOG_STEP * mConfig.getBatchSize());
+    std::cout << "Average over last " << LOG_STEP << " batches: " << averageRecentScore << std::endl;
+    mRecentTotal = 0; // Reset for next N batches.
+
+    // Run and log an example hand without making any updates
+    Hand h = mVideoPoker.deal();
+    std::cout << "Sample Hand: " << h << std::endl;
+    std::vector<float> input = translateHand(h);
+    float baseline = baselineCalc->predict(input);
+    std::cout << "Baseline: " << baseline << std::endl;
+    t.feedForward(input);
+    const std::vector<float>& output = t.getOutputs();
+    std::cout << "Outputs: " << t.getOutputs() << std::endl;
+    std::vector<bool> exchanges = mDiscardStrategy->selectAction(output, mRng, true);
+    std::cout << "Prediction: " << exchanges << std::endl;
+    Hand e = mVideoPoker.exchange(exchanges);
+    std::cout << "Ending Hand: " << e << std::endl;
+    int score = mVideoPoker.score(mVideoPoker.getHandType(e));
+    std::cout << "Score: " << score << std::endl;
+
+    // Log progress to file for later analysis
+    mLogFile << mNumBatches << ",";
+    mLogFile << mIterations << ",";
+    mLogFile << averageTotalScore << ",";
+    mLogFile << averageRecentScore << ",";
+    logAndPrintNorms(t);
+    mLogFile << std::endl;
+    std::cout << std::endl;
+}
+
+
 void Agent::train(const std::atomic<bool>& stopSignal) {
 
     std::mutex vectorMutex;
@@ -85,12 +125,16 @@ void Agent::train(const std::atomic<bool>& stopSignal) {
     std::generate_n(std::back_inserter(baselineCalcs), mConfig.numWorkers, mBaselineFactory);
 
     auto completionStep = [&]() {
+        mNumBatches += 1;
         for (size_t i = 1; i < trainers.size(); i++) {
             trainers[0].aggregate(trainers[i]);
         }
         trainers[0].batch(mConfig.getBatchSize());
         mNet->update(mConfig.actorLearningRate, trainers[0].getTotalWeightGradients(), trainers[0].getTotalBiasGradients());
         baselineCalcs[0]->update(baselineCalcs, mConfig.getBatchSize());
+        if (mNumBatches % LOG_STEP == 0) {
+            logProgress(trainers[0], baselineCalcs[0].get());
+        }
     };
 
 
@@ -104,7 +148,7 @@ void Agent::train(const std::atomic<bool>& stopSignal) {
         while (true) { // Break when stopSignal is set.
             t.reset(); // Clear accumulated gradients
 
-            for (int i = 0; i < mConfig.getBatchSize(); i++) {
+            for (int i = 0; i < mConfig.numInBatch; i++) {
                 Hand h = vp.deal();
                 std::vector<float> input = translateHand(h);
                 float baseline = baselineCalcs[workerId]->predict(input);
@@ -117,27 +161,7 @@ void Agent::train(const std::atomic<bool>& stopSignal) {
                 baselineCalcs[workerId]->train(score);
                 mTotalScore += score;
                 mRecentTotal += score;
-                if (mIterations.fetch_add(1) % 10000 == 0) {
-                    int recentTotalLocal = mRecentTotal.exchange(0); // Minor race condition, but only used for monitoring.
-                    float averageTotalScore = float(mTotalScore) / mIterations;
-                    std::cout << "Thread: " << std::this_thread::get_id() << "--- ";
-                    std::cout << "Games Played: " << mIterations << ", Average Score: " << averageTotalScore << std::endl;
-                    float averageRecentScore = float(recentTotalLocal) / 10000;
-                    std::cout << "Average of last 10000: " << averageRecentScore << std::endl;
-                    std::cout << "Sample Hand: " << h << std::endl;
-                    std::cout << "Baseline: " << baseline << std::endl;
-                    std::cout << "Outputs: " << t.getOutputs() << std::endl;
-                    std::cout << "Prediction: " << exchanges << std::endl;
-                    std::cout << "Ending Hand: " << e << std::endl;
-                    std::cout << "Score: " << score << std::endl;
-                    mLogFile << mIterations << ",";
-                    mLogFile << averageTotalScore << ",";
-                    mLogFile << averageRecentScore << ",";
-                    logAndPrintNorms(t);
-                    mLogFile << std::endl;
-                    std::cout << std::endl;
-                    mRecentTotal = 0;
-                }
+                mIterations += 1;
 
                 float advantage = (score - baseline);
                 std::vector<float> errors = mDiscardStrategy->calculateError(output, exchanges, advantage);
@@ -219,23 +243,22 @@ void Agent::logAndPrintNorms(const Trainer& trainer) {
     double globalWeightNorm = std::sqrt(totalWeightNormSquared);
     std::cout << "Overall Weight Norm: " <<  globalWeightNorm << std::endl;
 
-    // TODO: Move Norm Calculation to Batch Completion Step
-    // std::vector<double> gradientNormsSquared = trainer.getLayerGradientNormsSquared();
-    // std::cout << "Gradient Norms:" << std::endl;
-    // double totalGradientNormSquared = 0.0;
-    // for (size_t i = 0; i < gradientNormsSquared.size(); i++) {
-    //     std::cout << "Layer " << i << ": " << std::sqrt(gradientNormsSquared[i]) << std::endl;
-    //     totalGradientNormSquared += gradientNormsSquared[i];
-    // }
-    // double globalGradientNorm = std::sqrt(totalGradientNormSquared);
-    // std::cout << "Overall Gradient Norm: " << globalGradientNorm << std::endl;
+    std::vector<double> gradientNormsSquared = trainer.getLayerGradientNormsSquared();
+    std::cout << "Gradient Norms:" << std::endl;
+    double totalGradientNormSquared = 0.0;
+    for (size_t i = 0; i < gradientNormsSquared.size(); i++) {
+        std::cout << "Layer " << i << ": " << std::sqrt(gradientNormsSquared[i]) << std::endl;
+        totalGradientNormSquared += gradientNormsSquared[i];
+    }
+    double globalGradientNorm = std::sqrt(totalGradientNormSquared);
+    std::cout << "Overall Gradient Norm: " << globalGradientNorm << std::endl;
 
     mLogFile << globalWeightNorm << ",";
-    // mLogFile << globalGradientNorm << ",";
+    mLogFile << globalGradientNorm << ",";
     for (size_t i = 0; i < weightNormsSquared.size(); i++) {
         mLogFile << std::sqrt(weightNormsSquared[i]) << ",";
     }
-    // for (size_t i = 0; i < gradientNormsSquared.size(); i++) {
-    //     mLogFile << std::sqrt(gradientNormsSquared[i]) << ",";
-    // }
+    for (size_t i = 0; i < gradientNormsSquared.size(); i++) {
+        mLogFile << std::sqrt(gradientNormsSquared[i]) << ",";
+    }
 }
