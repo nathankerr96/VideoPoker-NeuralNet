@@ -209,21 +209,3 @@ std::ostream& operator<<(std::ostream& os, const std::vector<LayerSpecification>
     }
     return os;
 }
-
-std::ostream& operator<<(std::ostream& os, const NeuralNet& net) {
-    os << "NeuralNet Topology: ";
-    if (net.mLayers.empty()) {
-        os << "[No layers]" << std::endl;
-        return os;
-    }
-
-    // Reconstruct topology
-    os << net.mLayers[0].getNumInputs(); // Input layer size
-    for (const auto& layer : net.mLayers) {
-        os << " -> " << layer.getNumNeurons();
-    }
-    os << std::endl;
-
-
-    return os;
-}

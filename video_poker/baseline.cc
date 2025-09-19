@@ -20,10 +20,11 @@ void RunningAverageBaseline::train(int score) {
     mCount += 1;
 }
 
-CriticNetworkBaseline::CriticNetworkBaseline(NeuralNet* net, float learningRate)
+CriticNetworkBaseline::CriticNetworkBaseline(NeuralNet* net, float learningRate, std::unique_ptr<Optimizer> optimizer)
         : mNet(net), 
           mTrainer(net),
-          mLearningRate(learningRate) {}
+          mLearningRate(learningRate),
+          mOptimizer(std::move(optimizer)) {}
 
 float CriticNetworkBaseline::predict(const std::vector<float>& inputs) {
     mTrainer.feedForward(inputs);
@@ -48,6 +49,7 @@ void CriticNetworkBaseline::update(std::vector<std::unique_ptr<BaselineCalculato
         otherCriticBaseline->mTrainer.reset();
     }
     mTrainer.batch(batchSize);
-    mNet->update(mLearningRate, mTrainer.getTotalWeightGradients(), mTrainer.getTotalBiasGradients());
+    mOptimizer->step(mNet, mTrainer, mLearningRate);
+    // mNet->update(mLearningRate, mTrainer.getTotalWeightGradients(), mTrainer.getTotalBiasGradients());
     mTrainer.reset();
 }

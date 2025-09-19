@@ -43,6 +43,15 @@ Agent::Agent(const HyperParameters& config,
             throw std::invalid_argument("Unsupported Output Layer Size");
     }
 
+    switch (config.optimizerType) {
+        case SDG:
+            mOptimizer = std::make_unique<SDGOptimizer>();
+            break;
+        case MOMENTUM:
+            mOptimizer = std::make_unique<MomentumOptimizer>(mNet.get(), config.beta);
+            break;
+    }
+
     if (!mLogFile.is_open()) {
         std::cerr << "Could not open Log file!" << std::endl;
     } else {
@@ -130,7 +139,8 @@ void Agent::train(const std::atomic<bool>& stopSignal) {
             trainers[0].aggregate(trainers[i]);
         }
         trainers[0].batch(mConfig.getBatchSize());
-        mNet->update(mConfig.actorLearningRate, trainers[0].getTotalWeightGradients(), trainers[0].getTotalBiasGradients());
+        // mNet->update(mConfig.actorLearningRate, trainers[0].getTotalWeightGradients(), trainers[0].getTotalBiasGradients());
+        mOptimizer->step(mNet.get(), trainers[0], mConfig.actorLearningRate);
         baselineCalcs[0]->update(baselineCalcs, mConfig.getBatchSize());
         if (mNumBatches % LOG_STEP == 0) {
             logProgress(trainers[0], baselineCalcs[0].get());

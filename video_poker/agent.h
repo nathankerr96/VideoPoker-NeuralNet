@@ -29,6 +29,7 @@ public:
 private:
     HyperParameters mConfig;
     std::unique_ptr<NeuralNet> mNet;
+    std::unique_ptr<Optimizer> mOptimizer;
     std::vector<std::mt19937> mRngs; // Per worker RNG engine
     std::unique_ptr<DecisionStrategy> mDiscardStrategy;
     std::function<std::unique_ptr<BaselineCalculator>()> mBaselineFactory;

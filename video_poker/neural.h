@@ -58,9 +58,7 @@ public:
         const std::vector<std::vector<float>>& biasGradients);
     std::vector<double> getLayerWeightNormsSquared() const;
     const std::vector<Layer>& getLayers();
-
-
-    friend std::ostream& operator<<(std::ostream& os, const NeuralNet& net);
+ 
 private:
     std::vector<Layer> mLayers;
 };

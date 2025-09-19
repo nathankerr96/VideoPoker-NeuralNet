@@ -31,8 +31,17 @@ std::unique_ptr<BaselineCalculator> getRunningAverageBaseline() {
     return std::make_unique<RunningAverageBaseline>();
 }
 
-std::unique_ptr<BaselineCalculator> getCriticNetworkBaseline(NeuralNet* net, float learningRate) {
-    return std::make_unique<CriticNetworkBaseline>(net, learningRate);
+std::unique_ptr<BaselineCalculator> getCriticNetworkBaseline(NeuralNet* net, const HyperParameters& config) {
+    std::unique_ptr<Optimizer> optimizer;
+    switch (config.criticOptimizerType) {
+        case SDG:
+            optimizer = std::make_unique<SDGOptimizer>();
+            break;
+        case MOMENTUM:
+            optimizer = std::make_unique<MomentumOptimizer>(net, config.criticBeta);
+            break;
+    }
+    return std::make_unique<CriticNetworkBaseline>(net, config.criticLearningRate, std::move(optimizer));
 }
 
 int main() {
@@ -64,7 +73,7 @@ int main() {
             baselineFactory = getRunningAverageBaseline;
             break;
         case CRITIC_NETWORK:
-            baselineFactory = std::bind(getCriticNetworkBaseline, criticNetwork.get(), config.criticLearningRate);
+            baselineFactory = std::bind(getCriticNetworkBaseline, criticNetwork.get(), config);
             break;
     }
 

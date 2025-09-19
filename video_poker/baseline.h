@@ -2,6 +2,7 @@
 
 #include "neural.h"
 #include "trainer.h"
+#include "optimizer.h"
 
 #include <vector>
 #include <string>
@@ -45,7 +46,7 @@ private:
 
 class CriticNetworkBaseline : public BaselineCalculator {
 public:
-    CriticNetworkBaseline(NeuralNet* net, float learningRate);
+    CriticNetworkBaseline(NeuralNet* net, float learningRate, std::unique_ptr<Optimizer> optimizer);
     virtual float predict(const std::vector<float>& inputs) override;
     virtual void train(int score) override;
     // Aggregates gradients and updates underlying net. Must only be called from *one* calculator.
@@ -56,4 +57,5 @@ private:
     Trainer mTrainer;
     float mPrediction;
     float mLearningRate;
+    std::unique_ptr<Optimizer> mOptimizer;
 };

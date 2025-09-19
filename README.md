@@ -95,6 +95,7 @@ The following graph compares a model making batched updates with different learn
 |Fast|0.064|0.096|32|Linear Scaling Rule|
 
 ![Mini-Batching Comparison](charts/BatchedLearningRates.png)
+[Raw Data w/ Gradients](https://docs.google.com/spreadsheets/d/1EorHLowmUdgoqkkb9dlHFj2QPbyIkK0py8ujFtGrWtY/edit?gid=0#gid=0)
 
 Standard guidance seems to indicate that the learning rate should scale linearly with the batch size, however as can be seen in the chart this appears to be too high for the current model architecture. The warm-up period is much faster, however it appears to get stuck in a local minimum quickly and even shows signs of regressing.
 
