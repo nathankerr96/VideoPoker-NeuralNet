@@ -1,5 +1,18 @@
 # RL From Scratch
 
+## Table of Contents
+
+* [Goals](#goals)
+    + [Predictions](#predictions)
+* [Progress](#progress)
+    + [First Attempt](#first-attempt)
+    + [First Learning Net!](#first-learning-net)
+    + [Actor-Critic Model](#actor-critic-model)
+    + [Disabling Royal Flushes (Proof of Concept)](#disabling-royal-flushes-proof-of-concept)
+    + [Mini-Batching](#mini-batching)
+    + [Momentum-Based Gradient Descent](#momentum-based-gradient-descent)
+* [Up Next](#up-next)
+
 [Presentation Slides](https://docs.google.com/presentation/d/1IUyrTFRdHuy7-9HdpjYNgKBUNqm9e63cofNO57oQLZE/edit?pli=1)
 
 ## Goals
@@ -33,6 +46,8 @@ Architecture:
 
 This model did not show any improvement over the duration of training, with average RoC hovering around 0.34. It is very likely that the independent decisions for each hold/discard decision meant that the model couldn't deduce a consistent signal.
 
+---
+
 ### First Learning Net!
 
 Architecture:
@@ -50,6 +65,8 @@ This was enough to see a small gain in performance over time! The ending RoC was
 
 ![Average Score Over Time](charts/85-170(Sig)-170(Sig)-32(Soft),%20Running%20Average%20Baseline,%20Score%20Over%20Time.png)
 [Raw Data w/ Gradients](https://docs.google.com/spreadsheets/d/1hgVxpTN4HSozA5atwxwJeUB12rAeBXeNlqrY5FWYnmc/edit?gid=588975011#gid=588975011)
+
+---
 
 ### Actor-Critic Model
 
@@ -72,7 +89,9 @@ This further improved RoC to **~0.48** for a while. However, as evidenced by the
 ![Average Score Over Time](charts/85-170(Sig)-170(Sig)-32(Soft),%20Critic%20Network%20Baseline,%20Score%20Over%20Time.png)
 [Raw Data w/ Gradients](https://docs.google.com/spreadsheets/d/1j_1QpUa8SVRHx2bL5Kh3pwB7eZNJ_zFBZtb3u2vzCMM/edit?gid=1049217317#gid=1049217317)
 
-#### Disabling Royal Flushes (Proof of Concept)
+---
+
+### Disabling Royal Flushes (Proof of Concept)
 
 Same architecture, however royal flushes are rewarded as straight flushes for a more consistent reward signal. I consider this cheating (since we are changing the environment instead of the model) so will eventually replace this with other techniques to make the signal more stable (mini-batching and starting out with a logarithmic reward signal).
 
@@ -81,7 +100,9 @@ This provided a much more stable reward signal and allowed the model to break th
 ![Average Score Over Time](charts/85-170(Sig)-170(Sig)-32(Soft),%20Critic%20Network%20Baseline,%20Score%20Over%20Time%20(Disabled%20Royal%20Flush).png)
 [Raw Data w/ Gradients](https://docs.google.com/spreadsheets/d/1bjb3qHKBfUTXn8QfzdyFB1FvXzHEB-JoWbKcmvbBGQA/edit?gid=767602707#gid=767602707)
 
-#### Mini-Batching
+---
+
+### Mini-Batching
 
 To provide a more stable training signal to the model, we can run multiple iterations at the current policy and average all of the resultant gradients before making an update to the model. This technique is called mini-batching and also gives us a natural place to parallelize the training process (many workers running backpropagation at the same time). It also allows us to increase the training rate since the updates should be closer to the "true" gradient.
 
@@ -105,8 +126,9 @@ The happy medium learning rate saw by far the best performance yet. It was very 
 
 It should be noted that the batching is not fully parallelized on my machine, and has an increased cost to aggregate all of the gradients. So # of batches should not be viewed as a comparison of wall-clock training time, just a # of updates to the model.
 
+---
 
-#### Momentum-Based Gradient Descent
+### Momentum-Based Gradient Descent
 
 Another common optimization to the gradient descent algorithm is adding "momentum" to the weight updates during training with the idea that the momentum will help push the policy out of shallow local minima of the error surface. (A ball rolling down a bumpy hill is the common metaphor). This is done by keeping a diminishing portion of weight gradients from all previous steps, controlled by a newly introduced hyperparameter called "beta".
 
@@ -132,7 +154,7 @@ Unfortunately this wasn't immediately reproducible on the subsequent 2 trials wi
 
 While there wasn't a clear and obvious winning config from this round of tests, momentum *should* generally do no harm (assuming the learning rate is properly adjusted), so future experiments will likely be based on the Medium configuration from this set. Once the last currently planned hyperparameter is added (Entropy-Bonus), I will conduct a more thorough review of all available hyperparameters in a more controlled setup (i.e. standardized seeds) which will hopefully demonstrate an average improvement when using the momentum optimizer.
 
-### Up Next
+## Up Next
 
 * Entropy-Bonus reward to encourage exploration
 * Stabilizing reward signals
