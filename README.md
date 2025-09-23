@@ -6,11 +6,11 @@
 
 The primary goal of the project is to learn by exploring different model architectures and techniques within RL. To have something to work towards, I'm setting an initial goal of 0.7 average return on credit, which is about half way between random (0.34) and optimal (~0.99) play.
 
-Even discouting straights entirely would allow the model to achieve ~0.9 RoC, so I believe 0.7 is a reasonable initial target.
+Even discouting straights entirely would allow the model to achieve **~0.9** RoC, so I believe 0.7 is a reasonable initial target.
 
 ### Predicitons
 * I expect the model to quickly identify most pairs/tips/quads as good to keep, but struggle to learn straights.
-EV w/o straights ~0.94 according to online calc
+EV w/o straights **~0.94** according to online calc
 * I also expect Royal Flushes to be rare enough that the model won’t effectively learn them. Straight flushes to a lesser extent since the model may run into them when going for flushes.
 * Specific optimal strategies I expect it to struggle with:
     * 4 to Royal (18.3617) > Dealt Flush (6.0)
@@ -46,7 +46,7 @@ Since hold/discard decisions should be made based on the entire hand, not indepe
 
 I also added a baseline related to the running average of RoC up to that point since previously the model received no signal (i.e. reward was 0 so gradient was 0) when throwing away a good hand.
 
-This was enough to see a small gain in performance over time! The ending RoC was ~0.41 compared to ~0.34 for random play.
+This was enough to see a small gain in performance over time! The ending RoC was **~0.41** compared to **~0.34** for random play.
 
 ![Average Score Over Time](charts/85-170(Sig)-170(Sig)-32(Soft),%20Running%20Average%20Baseline,%20Score%20Over%20Time.png)
 [Raw Data w/ Gradients](https://docs.google.com/spreadsheets/d/1hgVxpTN4HSozA5atwxwJeUB12rAeBXeNlqrY5FWYnmc/edit?gid=588975011#gid=588975011)
@@ -67,7 +67,7 @@ Not all hands are worth the same value (e.g. dealt 3-of-a-kind is worth much mor
 
 To account for this, we train a second model to predict the value of the hand and use it's output as the baseline (the Critic in the Actor-Critic architecture). The critic tries to predict the value of the hand based on the **current** actor policy so when the decision made appears to be better than the current policy, it is reinforced.
 
-This further imporved RoC to ~0.48 for a while. However, as evidenced by the chart, the policy remains very sensitive to the large reward signal provided by the Royal Flush. This particular training sequence hit a streak of huge rewards signals which fully destroyed the policy.
+This further imporved RoC to **~0.48** for a while. However, as evidenced by the chart, the policy remains very sensitive to the large reward signal provided by the Royal Flush. This particular training sequence hit a streak of huge rewards signals which fully destroyed the policy.
 
 ![Average Score Over Time](charts/85-170(Sig)-170(Sig)-32(Soft),%20Critic%20Network%20Baseline,%20Score%20Over%20Time.png)
 [Raw Data w/ Gradients](https://docs.google.com/spreadsheets/d/1j_1QpUa8SVRHx2bL5Kh3pwB7eZNJ_zFBZtb3u2vzCMM/edit?gid=1049217317#gid=1049217317)
@@ -76,7 +76,7 @@ This further imporved RoC to ~0.48 for a while. However, as evidenced by the cha
 
 Same architecture, however royal flushes are rewarded as straight flushes for a more consistent reward signal. I consider this cheating (since we are changing the environment instead of the model) so will eventually replace this with other techniques to make the signal more stable (mini-batching and starting out with a logrithmic reweard signal).
 
-This provided a much more stable reward signal and allowed the model to break the ~0.5 RoC barrier, ending around ~0.53-- a promising sign for further reward signal optimizations.
+This provided a much more stable reward signal and allowed the model to break the ~0.5 RoC barrier, ending around **~0.53**-- a promising sign for further reward signal optimizations.
 
 ![Average Score Over Time](charts/85-170(Sig)-170(Sig)-32(Soft),%20Critic%20Network%20Baseline,%20Score%20Over%20Time%20(Disabled%20Royal%20Flush).png)
 [Raw Data w/ Gradients](https://docs.google.com/spreadsheets/d/1bjb3qHKBfUTXn8QfzdyFB1FvXzHEB-JoWbKcmvbBGQA/edit?gid=767602707#gid=767602707)
@@ -101,13 +101,40 @@ Standard guidance seems to indicate that the learning rate should scale linearly
 
 The slow learning rate (i.e. unchanged from the non-batched version) shows similar, although slightly better, performance as the non-batched version. It is a little quicker to find a basic working policy and settles on a policy that has a higher RoC than the non-batched version. It also appears to keep learning even after 10M iterations, eventually breaking through 0.58 RoC.
 
-The happy medium learning rate saw by far the best performance yet. It was very quick to learn the basic policy and was already pushing 0.6 RoC after ~2.5M iterations whereas the non-batched version was still at 0.5 RoC. By the end of training, the RoC of the policy was ~0.62-- a new record.
+The happy medium learning rate saw by far the best performance yet. It was very quick to learn the basic policy and was already pushing 0.6 RoC after ~2.5M iterations whereas the non-batched version was still at 0.5 RoC. By the end of training, the RoC of the policy was **~0.62**-- a new record.
 
 It should be noted that the batching is not fully parallelized on my machine, and has an increased cost to aggregate all of the gradients. So # of batches should not be viewed as a comparison of wall-clock training time, just a # of updates to the model.
 
+
+#### Momentum-Based Gradient Descent
+
+Another common optimization to the gradient descent algorithm is adding "momentum" to the weight updates during training with the idea that the momentum will help push the policy out of shallow local minima of the error surface. (A ball rolling down a bumpy hill is the common metaphor). This is done by keeping a diminishing portion of weight gradients from all previous steps, controlled by a newly introduced hyperparamter called "beta".
+
+All configurations used the Actor-Critic setup with a batch size of 32. The "Medium" config from the previous section was used as a base with adjustments to the Actor's learning rate based on the momentum. The Critic network did not use the momentum optimizer to limit the number of changing hyperparameters.
+
+With the introduction of momentum, gradients accumulate as training goes on (hopefully in the direction of the "true" gradient for the problem). This means that the learning rate must be adjusted accordingly to prevent massive weight updates. The standard practice is to divide the learning rate by 1 / (1 - beta). E.g. a momentum of 90% will have a learning rate that is 1/10 of a momentum free configuraiton. This heuristic was used for each of the following configs.
+
+|Config|Actor Learning Rate|Beta|
+|---|---|---|
+|No Momentum|0.001|N/A|
+|Low|0.002|0.8|
+|Medium|0.0005|0.95|
+|High|0.0001|0.99|
+
+The following chart shows the performance of the different configs to test how the network responds to training with different momentums.
+
+![Mini-Batching Comparison](charts/MomentumComparison.png)
+[Raw Data w/ Gradients](https://docs.google.com/spreadsheets/d/1lFn1pzw47IQw0CnOhhMC6g_lkFky_TaYG7f9eY2w56I/edit?gid=0#gid=0)
+
+In this first test, the "Medium" momentum config set a new record for return on credit, ending around **~0.68**. The resulting policy had learned to keep low 3-of-a-kinds which accounted for the increased performance. It still struggled to keep low paris in some cases (e.g. when dealt one or more high cards), but was a great step nonetheless.
+
+Unfortunately this wasn't immediately reproducible on the subsequent 2 trials with the same configurations. In one experiment, the medium and low momentum configuraitons showed similar performance to the no momentum config and in one trial, SDG w/ no momentum achived a shockingly high RoC of **~0.77**. This shows that even with the addition of batching and momentum, the network is still susceptible to getting stuck in local minima and further techniques will be needed to encourage continued exploration.
+
+While there wasn't a clear and obvious winning config from this round of tests, momentum *should* generally do no harm (assuming the learning rate is properly adjusted), so future experiments will likely be based on the Medium configuration from this set. Once the last currently planned hyperparamter is added (Entropy-Bonus), I will conduct a more thorough review of all available hyperparameters in a more control setup (i.e. standardized seeds) which will hopefully demonstrate an average improvment when using the momentum optimizer.
+
 ### Up Next
 
-* Epsilon-Greedy Annealing to promote exploration
+* Entropy-Bonus reward to encourage exploration
 * Stabilizing reward signals
 * Experimenting with Wider/Deeper Networks
 * Experience Replay Buffer to capture "surprising" training examples.
