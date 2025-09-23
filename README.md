@@ -4,11 +4,11 @@
 
 ## Goals
 
-The primary goal of the project is to learn by exploring different model architectures and techniques within RL. To have something to work towards, I'm setting an initial goal of 0.7 average return on credit, which is about half way between random (0.34) and optimal (~0.99) play.
+The primary goal of the project is to learn by exploring different model architectures and techniques within RL. To have something to work towards, I'm setting an initial goal of 0.7 average return on credit, which is about halfway between random (0.34) and optimal (~0.99) play.
 
-Even discouting straights entirely would allow the model to achieve **~0.9** RoC, so I believe 0.7 is a reasonable initial target.
+Even discounting straights entirely would allow the model to achieve **~0.9** RoC, so I believe 0.7 is a reasonable initial target.
 
-### Predicitons
+### Predictions
 * I expect the model to quickly identify most pairs/tips/quads as good to keep, but struggle to learn straights.
 EV w/o straights **~0.94** according to online calc
 * I also expect Royal Flushes to be rare enough that the model won’t effectively learn them. Straight flushes to a lesser extent since the model may run into them when going for flushes.
@@ -31,7 +31,7 @@ Architecture:
 * 5 Sigmoid Output
 * No Baseline
 
-This model did not show any improvment over the duration of training, with average RoC hovering around 0.34. It's very likely that the independent decisions for each hold/discard decision meant that the model couldn't deduce a consistent signal.
+This model did not show any improvement over the duration of training, with average RoC hovering around 0.34. It is very likely that the independent decisions for each hold/discard decision meant that the model couldn't deduce a consistent signal.
 
 ### First Learning Net!
 
@@ -65,16 +65,16 @@ Architecture:
 
 Not all hands are worth the same value (e.g. dealt 3-of-a-kind is worth much more than dealt no high cards), but the running average baseline has no way of accounting for this. As a result, the model has little incentive to learn to hold high value hands. For example, getting dealt 4-of-a-kind and discarding 2 would still be rewarded since the pair is worth more than the average baseline.
 
-To account for this, we train a second model to predict the value of the hand and use it's output as the baseline (the Critic in the Actor-Critic architecture). The critic tries to predict the value of the hand based on the **current** actor policy so when the decision made appears to be better than the current policy, it is reinforced.
+To account for this, we train a second model to predict the value of the hand and use its output as the baseline (the Critic in the Actor-Critic architecture). The critic tries to predict the value of the hand based on the **current** actor policy so when the decision made appears to be better than the current policy, it is reinforced.
 
-This further imporved RoC to **~0.48** for a while. However, as evidenced by the chart, the policy remains very sensitive to the large reward signal provided by the Royal Flush. This particular training sequence hit a streak of huge rewards signals which fully destroyed the policy.
+This further improved RoC to **~0.48** for a while. However, as evidenced by the chart, the policy remains very sensitive to the large reward signal provided by the Royal Flush. This particular training sequence hit a streak of huge reward signals which fully destroyed the policy.
 
 ![Average Score Over Time](charts/85-170(Sig)-170(Sig)-32(Soft),%20Critic%20Network%20Baseline,%20Score%20Over%20Time.png)
 [Raw Data w/ Gradients](https://docs.google.com/spreadsheets/d/1j_1QpUa8SVRHx2bL5Kh3pwB7eZNJ_zFBZtb3u2vzCMM/edit?gid=1049217317#gid=1049217317)
 
 #### Disabling Royal Flushes (Proof of Concept)
 
-Same architecture, however royal flushes are rewarded as straight flushes for a more consistent reward signal. I consider this cheating (since we are changing the environment instead of the model) so will eventually replace this with other techniques to make the signal more stable (mini-batching and starting out with a logrithmic reweard signal).
+Same architecture, however royal flushes are rewarded as straight flushes for a more consistent reward signal. I consider this cheating (since we are changing the environment instead of the model) so will eventually replace this with other techniques to make the signal more stable (mini-batching and starting out with a logarithmic reward signal).
 
 This provided a much more stable reward signal and allowed the model to break the ~0.5 RoC barrier, ending around **~0.53**-- a promising sign for further reward signal optimizations.
 
@@ -108,11 +108,11 @@ It should be noted that the batching is not fully parallelized on my machine, an
 
 #### Momentum-Based Gradient Descent
 
-Another common optimization to the gradient descent algorithm is adding "momentum" to the weight updates during training with the idea that the momentum will help push the policy out of shallow local minima of the error surface. (A ball rolling down a bumpy hill is the common metaphor). This is done by keeping a diminishing portion of weight gradients from all previous steps, controlled by a newly introduced hyperparamter called "beta".
+Another common optimization to the gradient descent algorithm is adding "momentum" to the weight updates during training with the idea that the momentum will help push the policy out of shallow local minima of the error surface. (A ball rolling down a bumpy hill is the common metaphor). This is done by keeping a diminishing portion of weight gradients from all previous steps, controlled by a newly introduced hyperparameter called "beta".
 
 All configurations used the Actor-Critic setup with a batch size of 32. The "Medium" config from the previous section was used as a base with adjustments to the Actor's learning rate based on the momentum. The Critic network did not use the momentum optimizer to limit the number of changing hyperparameters.
 
-With the introduction of momentum, gradients accumulate as training goes on (hopefully in the direction of the "true" gradient for the problem). This means that the learning rate must be adjusted accordingly to prevent massive weight updates. The standard practice is to divide the learning rate by 1 / (1 - beta). E.g. a momentum of 90% will have a learning rate that is 1/10 of a momentum free configuraiton. This heuristic was used for each of the following configs.
+With the introduction of momentum, gradients accumulate as training goes on (hopefully in the direction of the "true" gradient for the problem). This means that the learning rate must be adjusted accordingly to prevent massive weight updates. The standard practice is to divide the learning rate by 1 / (1 - beta). E.g. a momentum of 90% will have a learning rate that is 1/10 of a momentum free configuration. This heuristic was used for each of the following configs.
 
 |Config|Actor Learning Rate|Beta|
 |---|---|---|
@@ -128,9 +128,9 @@ The following chart shows the performance of the different configs to test how t
 
 In this first test, the "Medium" momentum config set a new record for return on credit, ending around **~0.68**. The resulting policy had learned to keep low 3-of-a-kinds which accounted for the increased performance. It still struggled to keep low paris in some cases (e.g. when dealt one or more high cards), but was a great step nonetheless.
 
-Unfortunately this wasn't immediately reproducible on the subsequent 2 trials with the same configurations. In one experiment, the medium and low momentum configuraitons showed similar performance to the no momentum config and in one trial, SDG w/ no momentum achived a shockingly high RoC of **~0.77**. This shows that even with the addition of batching and momentum, the network is still susceptible to getting stuck in local minima and further techniques will be needed to encourage continued exploration.
+Unfortunately this wasn't immediately reproducible on the subsequent 2 trials with the same configurations. In one experiment, the medium and low momentum configurations showed similar performance to the no momentum config and in one trial, SDG w/ no momentum achieved a shockingly high RoC of **~0.77**. This shows that even with the addition of batching and momentum, the network is still susceptible to getting stuck in local minima and further techniques will be needed to encourage continued exploration.
 
-While there wasn't a clear and obvious winning config from this round of tests, momentum *should* generally do no harm (assuming the learning rate is properly adjusted), so future experiments will likely be based on the Medium configuration from this set. Once the last currently planned hyperparamter is added (Entropy-Bonus), I will conduct a more thorough review of all available hyperparameters in a more control setup (i.e. standardized seeds) which will hopefully demonstrate an average improvment when using the momentum optimizer.
+While there wasn't a clear and obvious winning config from this round of tests, momentum *should* generally do no harm (assuming the learning rate is properly adjusted), so future experiments will likely be based on the Medium configuration from this set. Once the last currently planned hyperparameter is added (Entropy-Bonus), I will conduct a more thorough review of all available hyperparameters in a more controlled setup (i.e. standardized seeds) which will hopefully demonstrate an average improvement when using the momentum optimizer.
 
 ### Up Next
 
