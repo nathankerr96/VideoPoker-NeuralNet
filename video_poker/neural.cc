@@ -205,7 +205,7 @@ std::ostream& operator<<(std::ostream& os, const LayerSpecification& l) {
 
 std::ostream& operator<<(std::ostream& os, const std::vector<LayerSpecification>& v) {
     for (size_t i = 0; i < v.size(); i++) {
-        os << "Layer " << i << ", " << v[i];
+        os << "Layer " << i << "," << v[i] << ",";
     }
     return os;
 }

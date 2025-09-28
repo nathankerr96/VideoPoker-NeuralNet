@@ -48,15 +48,15 @@ Agent::Agent(const HyperParameters& config,
             mOptimizer = std::make_unique<SDGOptimizer>();
             break;
         case MOMENTUM:
-            mOptimizer = std::make_unique<MomentumOptimizer>(mNet.get(), config.momentum_coeff);
+            mOptimizer = std::make_unique<MomentumOptimizer>(mNet.get(), config.momentumCoeff);
             break;
     }
 
     if (!mLogFile.is_open()) {
         std::cerr << "Could not open Log file!" << std::endl;
     } else {
-        mLogFile << "Topology " << std::endl << config.actorTopology << std::endl;
-        mLogFile << "Learning Rate," << config.actorLearningRate << std::endl << std::endl;
+        mLogFile << config << std::endl;
+        mLogFile << std::endl;
         // mLogFile << "Baseline Calculator, " << mBaselineCalculator->getName() << std::endl;
         mLogFile << "Batches,Hands,TotalAvgScore,RecentAvgScore,GlobalWeightNorm,GlobalGradientNorm,";
         for (size_t i = 1; i < config.actorTopology.size(); i++) {
@@ -116,6 +116,7 @@ void Agent::logProgress(Trainer& t, BaselineCalculator* baselineCalc) {
     t.feedForward(input);
     const std::vector<float>& output = t.getOutputs();
     std::cout << "Outputs: " << t.getOutputs() << std::endl;
+    std::cout << "Entropy: " << calculateEntropy(output) << std::endl;
     std::vector<bool> exchanges = mDiscardStrategy->selectAction(output, mRng, true);
     std::cout << "Prediction: " << exchanges << std::endl;
     Hand e = mVideoPoker.exchange(exchanges);
@@ -184,7 +185,7 @@ void Agent::train(const std::atomic<bool>& stopSignal) {
 
                 float advantage = (score - baseline);
                 std::vector<float> policyError = mDiscardStrategy->calculateError(output, exchanges, advantage);
-                std::vector<float> entropyError = mDiscardStrategy->calculateEntropyError(output, calculateEntropy(output), mConfig.entropy_coeff);
+                std::vector<float> entropyError = mDiscardStrategy->calculateEntropyError(output, calculateEntropy(output), mConfig.entropyCoeff);
                 for (size_t i = 0; i < policyError.size(); i++) {
                     policyError[i] += entropyError[i];
                 }
