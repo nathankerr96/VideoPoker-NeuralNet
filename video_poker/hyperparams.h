@@ -23,7 +23,9 @@ struct HyperParameters {
     float criticBeta;
 
     OptimizerType optimizerType = SDG;
-    float beta;
+    float momentum_coeff;
+
+    float entropy_coeff = 0.0f;
 
     int numWorkers;
     int numInBatch;
@@ -52,72 +54,66 @@ inline std::vector<LayerSpecification> CRITIC_NETWORK_TOPOLOGY {
     {1, Activation::LINEAR},
 };
 
-const HyperParameters Softmax_CriticNetwork_32Batch_LowMomentum {
-    .name = "170-170-Softmax-Critic_Network-32_Batch-LowMomentum",
+
+const HyperParameters NoEntropy {
+    .name = "NoEntropy",
     .actorTopology = SOFTMAX_TOPOLOGY,
-    .actorLearningRate = 0.002f, // SDG rate divided by 1 / (1-beta)
+    .actorLearningRate = 0.0005f,
     .baselineCalculatorType = CRITIC_NETWORK,
     .criticTopology = CRITIC_NETWORK_TOPOLOGY,
     .criticLearningRate = 0.015f,
     .optimizerType = MOMENTUM,
-    .beta = 0.8f,
+    .momentum_coeff = 0.95f,
+    .entropy_coeff = 0.0f,
     .numWorkers = 8,
     .numInBatch = 4,
 };
 
-const HyperParameters Softmax_CriticNetwork_32Batch_MedMomentum {
-    .name = "170-170-Softmax-Critic_Network-32_Batch-MedMomentum",
+const HyperParameters LowEntropy {
+    .name = "LowEntropy",
     .actorTopology = SOFTMAX_TOPOLOGY,
-    .actorLearningRate = 0.0005f, // SDG rate divided by 1 / (1-beta)
+    .actorLearningRate = 0.0005f,
     .baselineCalculatorType = CRITIC_NETWORK,
     .criticTopology = CRITIC_NETWORK_TOPOLOGY,
     .criticLearningRate = 0.015f,
     .optimizerType = MOMENTUM,
-    .beta = 0.95f,
+    .momentum_coeff = 0.95f,
+    .entropy_coeff = 0.001f,
     .numWorkers = 8,
     .numInBatch = 4,
 };
 
-const HyperParameters Softmax_CriticNetwork_32Batch_HighMomentum {
-    .name = "170-170-Softmax-Critic_Network-32_Batch-HighMomentum",
+const HyperParameters MedEntropy {
+    .name = "MedEntropy",
     .actorTopology = SOFTMAX_TOPOLOGY,
-    .actorLearningRate = 0.0001f, // SDG rate divided by 1 / (1-beta)
+    .actorLearningRate = 0.0005f,
     .baselineCalculatorType = CRITIC_NETWORK,
     .criticTopology = CRITIC_NETWORK_TOPOLOGY,
     .criticLearningRate = 0.015f,
     .optimizerType = MOMENTUM,
-    .beta = 0.99f,
+    .momentum_coeff = 0.95f,
+    .entropy_coeff = 0.005f,
     .numWorkers = 8,
     .numInBatch = 4,
 };
 
-
-const HyperParameters Softmax_CriticNetwork_32Batch_SDG {
-    .name = "170-170-Softmax-Critic_Network-32_Batch-SDG",
+const HyperParameters HighEntropy {
+    .name = "HighEntropy",
     .actorTopology = SOFTMAX_TOPOLOGY,
-    .actorLearningRate = 0.01f,
+    .actorLearningRate = 0.0005f,
     .baselineCalculatorType = CRITIC_NETWORK,
     .criticTopology = CRITIC_NETWORK_TOPOLOGY,
     .criticLearningRate = 0.015f,
+    .optimizerType = MOMENTUM,
+    .momentum_coeff = 0.95f,
+    .entropy_coeff = 0.01f,
     .numWorkers = 8,
     .numInBatch = 4,
-};
-
-const HyperParameters Softmax_CriticNetwork_1Batch {
-    .name = "170-170-Softmax-Critic_Network-1_Batch",
-    .actorTopology = SOFTMAX_TOPOLOGY,
-    .actorLearningRate = 0.002f,
-    .baselineCalculatorType = CRITIC_NETWORK,
-    .criticTopology = CRITIC_NETWORK_TOPOLOGY,
-    .criticLearningRate = 0.003f,
-    .numWorkers = 1,
-    .numInBatch = 1,
 };
 
 inline std::vector<HyperParameters> AvailableConfigs {
-    Softmax_CriticNetwork_32Batch_SDG,
-    Softmax_CriticNetwork_32Batch_LowMomentum,
-    Softmax_CriticNetwork_32Batch_MedMomentum,
-    Softmax_CriticNetwork_32Batch_HighMomentum,
-    Softmax_CriticNetwork_1Batch,
+    NoEntropy,
+    LowEntropy,
+    MedEntropy,
+    HighEntropy,
 };

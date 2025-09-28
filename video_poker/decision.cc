@@ -85,6 +85,20 @@ int ThirtyTwoNeuronStrategy::selectDiscardCombination(const std::vector<float>& 
     }
 }
 
+std::vector<float> ThirtyTwoNeuronStrategy::calculateEntropyError(const std::vector<float>& netOutputs, float entropy, float beta) {
+    assert(netOutputs.size() == 32);
+    std::vector<float> errors(netOutputs.size());
+    for (size_t i = 0; i < netOutputs.size(); i++) {
+        if (netOutputs[i] > 0) {
+            // TODO: More complex than it looks, come back to this and derive by hand.
+            errors[i] = beta * netOutputs[i] * (std::log(netOutputs[i]) + entropy);
+        } else {
+            errors[i] = 0.0f;
+        }
+    }
+    return errors;
+}
+
 std::vector<bool> ThirtyTwoNeuronStrategy::calcExchangeVector(int val) {
     assert(val >= 0);
     std::vector<bool> exchanges;

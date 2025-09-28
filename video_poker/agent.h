@@ -45,6 +45,7 @@ private:
     std::chrono::duration<double> mTotalTrainingTime {};
 
     std::vector<float> translateHand(const Hand& hand) const;
+    float calculateEntropy(const std::vector<float>& policy);
     // Should be called after gradient aggregation but before reset! (Else gradient norm == 0)
     void logProgress(Trainer& t, BaselineCalculator* baselineCalc);
     void logAndPrintNorms(const Trainer& trainer);

@@ -48,7 +48,7 @@ Agent::Agent(const HyperParameters& config,
             mOptimizer = std::make_unique<SDGOptimizer>();
             break;
         case MOMENTUM:
-            mOptimizer = std::make_unique<MomentumOptimizer>(mNet.get(), config.beta);
+            mOptimizer = std::make_unique<MomentumOptimizer>(mNet.get(), config.momentum_coeff);
             break;
     }
 
@@ -87,6 +87,15 @@ std::vector<float> Agent::translateHand(const Hand& hand) const {
     return ret;
 }
 
+float Agent::calculateEntropy(const std::vector<float>& policy) {
+    float entropy = 0.0f;
+    for (float p : policy) {
+        if (p > 0) {
+            entropy -= p * std::log(p);
+        }
+    }    
+    return entropy;
+}
 
 // TODO: These params should be made const, either by directly referencing the underlying NeuralNet or
 // adding const equivalent functions (default feedforward saves activations for backprop).
@@ -174,8 +183,12 @@ void Agent::train(const std::atomic<bool>& stopSignal) {
                 mIterations += 1;
 
                 float advantage = (score - baseline);
-                std::vector<float> errors = mDiscardStrategy->calculateError(output, exchanges, advantage);
-                t.backpropagate(errors);
+                std::vector<float> policyError = mDiscardStrategy->calculateError(output, exchanges, advantage);
+                std::vector<float> entropyError = mDiscardStrategy->calculateEntropyError(output, calculateEntropy(output), mConfig.entropy_coeff);
+                for (size_t i = 0; i < policyError.size(); i++) {
+                    policyError[i] += entropyError[i];
+                }
+                t.backpropagate(policyError);
             }
 
             barrier.arrive_and_wait(); // Runs completionStep once all threads arrive.
