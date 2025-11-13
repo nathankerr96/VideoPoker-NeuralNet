@@ -78,7 +78,7 @@ const HyperParameters LowEntropy {
     .criticLearningRate = 0.015f,
     .optimizerType = MOMENTUM,
     .momentumCoeff = 0.95f,
-    .entropyCoeff = 0.001f,
+    .entropyCoeff = 0.004f,
     .numWorkers = 8,
     .numInBatch = 4,
 };
@@ -92,7 +92,7 @@ const HyperParameters MedEntropy {
     .criticLearningRate = 0.015f,
     .optimizerType = MOMENTUM,
     .momentumCoeff = 0.95f,
-    .entropyCoeff = 0.005f,
+    .entropyCoeff = 0.01f,
     .numWorkers = 8,
     .numInBatch = 4,
 };
@@ -106,7 +106,21 @@ const HyperParameters HighEntropy {
     .criticLearningRate = 0.015f,
     .optimizerType = MOMENTUM,
     .momentumCoeff = 0.95f,
-    .entropyCoeff = 0.01f,
+    .entropyCoeff = 0.03f,
+    .numWorkers = 8,
+    .numInBatch = 4,
+};
+
+const HyperParameters VeryHighEntropy {
+    .name = "VeryHighEntropy",
+    .actorTopology = SOFTMAX_TOPOLOGY,
+    .actorLearningRate = 0.0005f,
+    .baselineCalculatorType = CRITIC_NETWORK,
+    .criticTopology = CRITIC_NETWORK_TOPOLOGY,
+    .criticLearningRate = 0.015f,
+    .optimizerType = MOMENTUM,
+    .momentumCoeff = 0.95f,
+    .entropyCoeff = 0.1f,
     .numWorkers = 8,
     .numInBatch = 4,
 };
@@ -116,6 +130,7 @@ inline std::vector<HyperParameters> AvailableConfigs {
     LowEntropy,
     MedEntropy,
     HighEntropy,
+    VeryHighEntropy,
 };
 
 

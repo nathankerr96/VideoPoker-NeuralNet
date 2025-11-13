@@ -58,7 +58,7 @@ Agent::Agent(const HyperParameters& config,
         mLogFile << config << std::endl;
         mLogFile << std::endl;
         // mLogFile << "Baseline Calculator, " << mBaselineCalculator->getName() << std::endl;
-        mLogFile << "Batches,Hands,TotalAvgScore,RecentAvgScore,GlobalWeightNorm,GlobalGradientNorm,";
+        mLogFile << "Batches,Hands,TotalAvgScore,RecentAvgScore,RecentAvgEntropy,GlobalWeightNorm,GlobalGradientNorm,";
         for (size_t i = 1; i < config.actorTopology.size(); i++) {
             mLogFile << "Layer" << i << "WeightNorm,";
         }
@@ -104,7 +104,8 @@ void Agent::logProgress(Trainer& t, BaselineCalculator* baselineCalc) {
     std::cout << "Thread: " << std::this_thread::get_id() << "--- ";
     std::cout << "Batches: " << mNumBatches << ", Hands: " << mIterations << ", Average Score: " << averageTotalScore << std::endl;
     float averageRecentScore = float(mRecentTotal) / (LOG_STEP * mConfig.getBatchSize());
-    std::cout << "Average over last " << LOG_STEP << " batches: " << averageRecentScore << std::endl;
+    float averageRecentEntropy = mRecentEntropy.exchange(0.0f) / (LOG_STEP * mConfig.getBatchSize());
+    std::cout << "Average over last " << LOG_STEP << " batches: " << averageRecentScore << ", Entropy: " << averageRecentEntropy << std::endl;
     mRecentTotal = 0; // Reset for next N batches.
 
     // Run and log an example hand without making any updates
@@ -129,6 +130,7 @@ void Agent::logProgress(Trainer& t, BaselineCalculator* baselineCalc) {
     mLogFile << mIterations << ",";
     mLogFile << averageTotalScore << ",";
     mLogFile << averageRecentScore << ",";
+    mLogFile << averageRecentEntropy << ",";
     logAndPrintNorms(t);
     mLogFile << std::endl;
     std::cout << std::endl;
@@ -185,9 +187,13 @@ void Agent::train(const std::atomic<bool>& stopSignal) {
 
                 float advantage = (score - baseline);
                 std::vector<float> policyError = mDiscardStrategy->calculateError(output, exchanges, advantage);
-                std::vector<float> entropyError = mDiscardStrategy->calculateEntropyError(output, calculateEntropy(output), mConfig.entropyCoeff);
-                for (size_t i = 0; i < policyError.size(); i++) {
-                    policyError[i] += entropyError[i];
+                float entropy = calculateEntropy(output);
+                mRecentEntropy += entropy;
+                if (mConfig.entropyCoeff != 0.0f) {
+                    std::vector<float> entropyError = mDiscardStrategy->calculateEntropyError(output, entropy, mConfig.entropyCoeff);
+                    for (size_t i = 0; i < policyError.size(); i++) {
+                        policyError[i] += entropyError[i];
+                    }
                 }
                 t.backpropagate(policyError);
             }

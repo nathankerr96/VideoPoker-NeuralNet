@@ -40,6 +40,7 @@ private:
     // Progress indicators
     std::atomic<int> mTotalScore = 0;
     std::atomic<int> mRecentTotal = 0;
+    std::atomic<float> mRecentEntropy = 0.0f;
     std::atomic<int> mIterations = 0;
     int mNumBatches = 0; // Only called from single-threaded completion step.
     std::chrono::duration<double> mTotalTrainingTime {};
