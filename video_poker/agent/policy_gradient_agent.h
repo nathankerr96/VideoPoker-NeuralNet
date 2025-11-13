@@ -23,6 +23,7 @@ public:
           unsigned int seed, 
           std::function<std::unique_ptr<BaselineCalculator>()> baselineFactory);
     void train(const std::atomic<bool>& stopSignal) override;
+    std::vector<float> predict(const std::vector<float>& input) const override;
     int getNumTrainingIterations() const;
 private:
     HyperParameters mConfig;

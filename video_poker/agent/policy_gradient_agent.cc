@@ -136,6 +136,11 @@ void PolicyGradientAgent::logProgress(Trainer& t, BaselineCalculator* baselineCa
     std::cout << std::endl;
 }
 
+std::vector<float> PolicyGradientAgent::predict(const std::vector<float>& input) const {
+    Trainer t(mNet.get());
+    t.feedForward(input);
+    return t.getOutputs();
+}
 
 void PolicyGradientAgent::train(const std::atomic<bool>& stopSignal) {
     auto trainingStartTime = std::chrono::steady_clock::now();
@@ -252,8 +257,4 @@ void PolicyGradientAgent::logAndPrintNorms(const Trainer& trainer) {
     for (size_t i = 0; i < gradientNormsSquared.size(); i++) {
         mLogFile << std::sqrt(gradientNormsSquared[i]) << ",";
     }
-}
-
-NeuralNet* PolicyGradientAgent::getNet() const {
-    return mNet.get();
 }
