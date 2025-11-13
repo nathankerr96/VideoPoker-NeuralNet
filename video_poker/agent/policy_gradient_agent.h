@@ -1,5 +1,6 @@
 #pragma once
 
+#include "agent/base_agent.h"
 #include "neural.h"
 #include "poker.h"
 #include "decision.h"
@@ -15,23 +16,19 @@
 #include <fstream>
 #include <chrono>
 
-class Agent {
+class PolicyGradientAgent : public BaseAgent {
 public:
-    Agent(const HyperParameters& config,
+    PolicyGradientAgent(const HyperParameters& config,
           std::string fileName, 
           unsigned int seed, 
           std::function<std::unique_ptr<BaselineCalculator>()> baselineFactory);
-    void train(const std::atomic<bool>& stopSignal);
-    void randomEval(int iterations, std::mt19937& rng) const;
-    void targetedEval(std::mt19937& rng) const;
+    void train(const std::atomic<bool>& stopSignal) override;
     int getNumTrainingIterations() const;
-
 private:
     HyperParameters mConfig;
     std::unique_ptr<NeuralNet> mNet;
     std::unique_ptr<Optimizer> mOptimizer;
     std::vector<std::mt19937> mRngs; // Per worker RNG engine
-    std::unique_ptr<DecisionStrategy> mDiscardStrategy;
     std::function<std::unique_ptr<BaselineCalculator>()> mBaselineFactory;
     std::ofstream mLogFile;
     // Agent-level RNG and Poker client for sample hands and Evals. Worker threads have separate copies.
@@ -45,9 +42,9 @@ private:
     int mNumBatches = 0; // Only called from single-threaded completion step.
     std::chrono::duration<double> mTotalTrainingTime {};
 
-    std::vector<float> translateHand(const Hand& hand) const;
     float calculateEntropy(const std::vector<float>& policy);
     // Should be called after gradient aggregation but before reset! (Else gradient norm == 0)
     void logProgress(Trainer& t, BaselineCalculator* baselineCalc);
     void logAndPrintNorms(const Trainer& trainer);
+    NeuralNet* getNet() const override;
 };

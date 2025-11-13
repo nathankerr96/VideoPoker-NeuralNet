@@ -1,4 +1,4 @@
-#include "agent.h"
+#include "policy_gradient_agent.h"
 
 #include "neural.h"
 #include "poker.h"
@@ -18,7 +18,7 @@
 
 #define LOG_STEP 2000
 
-Agent::Agent(const HyperParameters& config,
+PolicyGradientAgent::PolicyGradientAgent(const HyperParameters& config,
              std::string fileName, 
              unsigned int seed, 
              std::function<std::unique_ptr<BaselineCalculator>()> baselineFactory)
@@ -77,7 +77,7 @@ Agent::Agent(const HyperParameters& config,
     }
 }
 
-std::vector<float> Agent::translateHand(const Hand& hand) const {
+std::vector<float> BaseAgent::translateHand(const Hand& hand) const {
     std::vector<float> ret(85, 0.0f);
     for (int i=0; i < 5; i++) {
         Card c = hand[i];
@@ -87,7 +87,7 @@ std::vector<float> Agent::translateHand(const Hand& hand) const {
     return ret;
 }
 
-float Agent::calculateEntropy(const std::vector<float>& policy) {
+float PolicyGradientAgent::calculateEntropy(const std::vector<float>& policy) {
     float entropy = 0.0f;
     for (float p : policy) {
         if (p > 0) {
@@ -99,7 +99,7 @@ float Agent::calculateEntropy(const std::vector<float>& policy) {
 
 // TODO: These params should be made const, either by directly referencing the underlying NeuralNet or
 // adding const equivalent functions (default feedforward saves activations for backprop).
-void Agent::logProgress(Trainer& t, BaselineCalculator* baselineCalc) {
+void PolicyGradientAgent::logProgress(Trainer& t, BaselineCalculator* baselineCalc) {
     float averageTotalScore = float(mTotalScore) / mIterations;
     std::cout << "Thread: " << std::this_thread::get_id() << "--- ";
     std::cout << "Batches: " << mNumBatches << ", Hands: " << mIterations << ", Average Score: " << averageTotalScore << std::endl;
@@ -137,7 +137,7 @@ void Agent::logProgress(Trainer& t, BaselineCalculator* baselineCalc) {
 }
 
 
-void Agent::train(const std::atomic<bool>& stopSignal) {
+void PolicyGradientAgent::train(const std::atomic<bool>& stopSignal) {
     auto trainingStartTime = std::chrono::steady_clock::now();
 
     std::vector<Trainer> trainers(mConfig.numWorkers, Trainer(mNet.get()));
@@ -219,54 +219,11 @@ void Agent::train(const std::atomic<bool>& stopSignal) {
     std::cout << "Training time (this/total): " << trainingSeconds << " / " << mTotalTrainingTime << std::endl;
 }
 
-int Agent::getNumTrainingIterations() const {
+int PolicyGradientAgent::getNumTrainingIterations() const {
     return mIterations;
 }
 
-void Agent::randomEval(int iterations, std::mt19937& rng) const {
-    VideoPoker vp {rng};
-    std::cout << "---Starting Eval, " <<  iterations << " iterations.---" << std::endl;
-    int total_score = 0;
-    Trainer trainer(mNet.get()); // TODO: This shouldn't have to go through trainer.
-    for (int i = 0; i < iterations; i++) {
-        Hand h = vp.deal();
-        std::vector<float> input = translateHand(h);
-        trainer.feedForward(input);
-        const std::vector<float>& output = trainer.getOutputs();
-        std::vector<bool> exchanges = mDiscardStrategy->selectAction(output, rng, false);
-        h = vp.exchange(exchanges);
-        if ((i+1) % 10000 == 0) {
-            std::cout << "Games Played: " << (i+1) << ", Total Score: " << total_score << std::endl;
-        }
-        int score = vp.score(vp.getHandType(h));
-        total_score += score;
-    }
-    std::cout << "---Average Score: " << float(total_score) / iterations << "---" << std::endl << std::endl;
-}
-
-
-void Agent::targetedEval(std::mt19937& rng) const {
-    std::vector<std::pair<std::string, Hand>> hands {
-        {"Junk", {{{{CLUB, 2}, {SPADE, 7}, {HEART, 10}, {CLUB, 4}, {DIAMOND, 8}}}}},
-        {"Pair", {{{{CLUB, 2}, {SPADE, 2}, {HEART, 10}, {CLUB, 4}, {DIAMOND, 8}}}}},
-        {"High Pair", {{{{CLUB, 12}, {SPADE, 12}, {HEART, 10}, {CLUB, 4}, {DIAMOND, 8}}}}},
-        {"High Pair", {{{{CLUB, 3}, {SPADE, 12}, {HEART, 10}, {CLUB, 4}, {DIAMOND, 12}}}}},
-        {"Two Pair", {{{{CLUB, 12}, {SPADE, 12}, {HEART, 10}, {CLUB, 10}, {DIAMOND, 8}}}}},
-        {"Trips", {{{{CLUB, 12}, {SPADE, 12}, {HEART, 12}, {CLUB, 10}, {DIAMOND, 8}}}}},
-        {"Quads", {{{{CLUB, 12}, {SPADE, 12}, {HEART, 12}, {CLUB, 10}, {DIAMOND, 12}}}}}
-    };
-    Trainer trainer(mNet.get());
-    for (const auto& h : hands) {
-        trainer.feedForward(translateHand(h.second));
-        std::vector<float> output = trainer.getOutputs();
-        std::cout << h.first << ": " << h.second << std::endl;
-        std::cout << "Outputs: " << trainer.getOutputs() << std::endl;
-        std::vector<bool> exchanges = mDiscardStrategy->selectAction(output, rng, false);
-        std::cout << "Decision: " << exchanges << std::endl;
-    }
-}
-
-void Agent::logAndPrintNorms(const Trainer& trainer) {
+void PolicyGradientAgent::logAndPrintNorms(const Trainer& trainer) {
     std::vector<double> weightNormsSquared = mNet->getLayerWeightNormsSquared();
     std::cout << "Weight Norms:" << std::endl;
     double totalWeightNormSquared = 0.0;
@@ -295,4 +252,8 @@ void Agent::logAndPrintNorms(const Trainer& trainer) {
     for (size_t i = 0; i < gradientNormsSquared.size(); i++) {
         mLogFile << std::sqrt(gradientNormsSquared[i]) << ",";
     }
+}
+
+NeuralNet* PolicyGradientAgent::getNet() const {
+    return mNet.get();
 }

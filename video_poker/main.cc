@@ -1,7 +1,7 @@
 #include "neural.h"
 #include "activations.h"
 #include "poker.h"
-#include "agent.h"
+#include "agent/policy_gradient_agent.h"
 #include "hyperparams.h"
 
 #include <iostream>
@@ -77,7 +77,7 @@ int main() {
             break;
     }
 
-    Agent agent {
+    PolicyGradientAgent agent {
         config,
         getLogName(config.name), 
         rd(), 
