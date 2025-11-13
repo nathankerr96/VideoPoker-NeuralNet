@@ -2,7 +2,6 @@
 
 #include "neural.h"
 #include "poker.h"
-#include "trainer.h"
 #include "hyperparams.h"
 
 #include <random>

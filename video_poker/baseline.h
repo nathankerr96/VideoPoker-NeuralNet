@@ -1,7 +1,7 @@
 #pragma once
 
 #include "neural.h"
-#include "trainer.h"
+#include "workspace.h"
 #include "optimizer.h"
 
 #include <vector>
@@ -54,7 +54,7 @@ public:
     virtual std::string getName() { return "Critic Network"; }
 private:
     NeuralNet* mNet;
-    Trainer mTrainer;
+    TrainingWorkspace mTrainingWorkspace;
     float mPrediction;
     float mLearningRate;
     std::unique_ptr<Optimizer> mOptimizer;

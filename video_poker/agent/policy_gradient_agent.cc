@@ -2,7 +2,7 @@
 
 #include "neural.h"
 #include "poker.h"
-#include "trainer.h"
+#include "workspace.h"
 #include "hyperparams.h"
 
 #include <random>
@@ -99,7 +99,7 @@ float PolicyGradientAgent::calculateEntropy(const std::vector<float>& policy) {
 
 // TODO: These params should be made const, either by directly referencing the underlying NeuralNet or
 // adding const equivalent functions (default feedforward saves activations for backprop).
-void PolicyGradientAgent::logProgress(Trainer& t, BaselineCalculator* baselineCalc) {
+void PolicyGradientAgent::logProgress(TrainingWorkspace& t, BaselineCalculator* baselineCalc) {
     float averageTotalScore = float(mTotalScore) / mIterations;
     std::cout << "Thread: " << std::this_thread::get_id() << "--- ";
     std::cout << "Batches: " << mNumBatches << ", Hands: " << mIterations << ", Average Score: " << averageTotalScore << std::endl;
@@ -137,7 +137,7 @@ void PolicyGradientAgent::logProgress(Trainer& t, BaselineCalculator* baselineCa
 }
 
 std::vector<float> PolicyGradientAgent::predict(const std::vector<float>& input) const {
-    Trainer t(mNet.get());
+    TrainingWorkspace t(mNet.get());
     t.feedForward(input);
     return t.getOutputs();
 }
@@ -145,22 +145,22 @@ std::vector<float> PolicyGradientAgent::predict(const std::vector<float>& input)
 void PolicyGradientAgent::train(const std::atomic<bool>& stopSignal) {
     auto trainingStartTime = std::chrono::steady_clock::now();
 
-    std::vector<Trainer> trainers(mConfig.numWorkers, Trainer(mNet.get()));
+    std::vector<TrainingWorkspace> trainingWorkspaces(mConfig.numWorkers, TrainingWorkspace(mNet.get()));
     std::vector<std::unique_ptr<BaselineCalculator>> baselineCalcs;
     baselineCalcs.reserve(mConfig.numWorkers);
     std::generate_n(std::back_inserter(baselineCalcs), mConfig.numWorkers, mBaselineFactory);
 
     auto completionStep = [&]() {
         mNumBatches += 1;
-        for (size_t i = 1; i < trainers.size(); i++) {
-            trainers[0].aggregate(trainers[i]);
+        for (size_t i = 1; i < trainingWorkspaces.size(); i++) {
+            trainingWorkspaces[0].aggregate(trainingWorkspaces[i]);
         }
-        trainers[0].batch(mConfig.getBatchSize());
-        // mNet->update(mConfig.actorLearningRate, trainers[0].getTotalWeightGradients(), trainers[0].getTotalBiasGradients());
-        mOptimizer->step(mNet.get(), trainers[0], mConfig.actorLearningRate);
+        trainingWorkspaces[0].batch(mConfig.getBatchSize());
+        // mNet->update(mConfig.actorLearningRate, trainingWorkspaces[0].getTotalWeightGradients(), trainingWorkspaces[0].getTotalBiasGradients());
+        mOptimizer->step(mNet.get(), trainingWorkspaces[0], mConfig.actorLearningRate);
         baselineCalcs[0]->update(baselineCalcs, mConfig.getBatchSize());
         if (mNumBatches % LOG_STEP == 0) {
-            logProgress(trainers[0], baselineCalcs[0].get());
+            logProgress(trainingWorkspaces[0], baselineCalcs[0].get());
         }
     };
 
@@ -170,7 +170,7 @@ void PolicyGradientAgent::train(const std::atomic<bool>& stopSignal) {
 
     auto trainingLoop = [&](int workerId) {
         VideoPoker vp {mRngs[workerId]};
-        Trainer& t = trainers[workerId];
+        TrainingWorkspace& t = trainingWorkspaces[workerId];
 
         while (true) { // Break when stopSignal is set.
             t.reset(); // Clear accumulated gradients
@@ -228,7 +228,7 @@ int PolicyGradientAgent::getNumTrainingIterations() const {
     return mIterations;
 }
 
-void PolicyGradientAgent::logAndPrintNorms(const Trainer& trainer) {
+void PolicyGradientAgent::logAndPrintNorms(const TrainingWorkspace& TrainingWorkspace) {
     std::vector<double> weightNormsSquared = mNet->getLayerWeightNormsSquared();
     std::cout << "Weight Norms:" << std::endl;
     double totalWeightNormSquared = 0.0;
@@ -239,7 +239,7 @@ void PolicyGradientAgent::logAndPrintNorms(const Trainer& trainer) {
     double globalWeightNorm = std::sqrt(totalWeightNormSquared);
     std::cout << "Overall Weight Norm: " <<  globalWeightNorm << std::endl;
 
-    std::vector<double> gradientNormsSquared = trainer.getLayerGradientNormsSquared();
+    std::vector<double> gradientNormsSquared = TrainingWorkspace.getLayerGradientNormsSquared();
     std::cout << "Gradient Norms:" << std::endl;
     double totalGradientNormSquared = 0.0;
     for (size_t i = 0; i < gradientNormsSquared.size(); i++) {

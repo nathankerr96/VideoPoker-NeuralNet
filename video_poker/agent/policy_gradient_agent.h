@@ -5,7 +5,7 @@
 #include "poker.h"
 #include "decision.h"
 #include "baseline.h"
-#include "trainer.h"
+#include "workspace.h"
 #include "hyperparams.h"
 
 #include <random>
@@ -45,7 +45,6 @@ private:
 
     float calculateEntropy(const std::vector<float>& policy);
     // Should be called after gradient aggregation but before reset! (Else gradient norm == 0)
-    void logProgress(Trainer& t, BaselineCalculator* baselineCalc);
-    void logAndPrintNorms(const Trainer& trainer);
-    NeuralNet* getNet() const override;
+    void logProgress(TrainingWorkspace& t, BaselineCalculator* baselineCalc);
+    void logAndPrintNorms(const TrainingWorkspace& trainingWorkspace);
 };

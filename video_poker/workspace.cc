@@ -1,8 +1,8 @@
-#include "trainer.h"
+#include "workspace.h"
 
 #include <vector>
 
-Trainer::Trainer(NeuralNet* net) : mNet(net) {
+TrainingWorkspace::TrainingWorkspace(NeuralNet* net) : mNet(net) {
     const std::vector<Layer>& layers = net->getLayers();
     mTotalWeightGradients.resize(layers.size());
     mTotalBiasGradients.resize(layers.size());
@@ -24,7 +24,7 @@ Trainer::Trainer(NeuralNet* net) : mNet(net) {
     mOutputDerivativesBuffer.resize(maxNeurons, 0.0f);
 }
 
-void Trainer::backpropagate(const std::vector<float>& errors) {
+void TrainingWorkspace::backpropagate(const std::vector<float>& errors) {
     std::vector<float>* upstreamGradient = nullptr;
     std::vector<float>* downstreamGradient = &mBlameBufferA; 
     const std::vector<Layer>& layers = mNet->getLayers();
@@ -51,7 +51,7 @@ void Trainer::backpropagate(const std::vector<float>& errors) {
     }
 }
 
-void Trainer::aggregate(Trainer& other) {
+void TrainingWorkspace::aggregate(TrainingWorkspace& other) {
     const std::vector<std::vector<float>>& weightGradients = other.getTotalWeightGradients();
     const std::vector<std::vector<float>>& biasGradients = other.getTotalBiasGradients();
     for (size_t l = 0; l < weightGradients.size(); l++) {
@@ -64,7 +64,7 @@ void Trainer::aggregate(Trainer& other) {
     }
 }
 
-void Trainer::batch(int batchSize) {
+void TrainingWorkspace::batch(int batchSize) {
     for (size_t l = 0; l < mTotalWeightGradients.size(); l++) {
         for (size_t w = 0; w < mTotalWeightGradients[l].size(); w++) {
             mTotalWeightGradients[l][w] /= batchSize;
@@ -75,14 +75,14 @@ void Trainer::batch(int batchSize) {
     }
 }
 
-void Trainer::reset() {
+void TrainingWorkspace::reset() {
     for(size_t i = 0; i < mNet->getLayers().size(); i++) {
         std::fill(mTotalWeightGradients[i].begin(), mTotalWeightGradients[i].end(), 0.0f);
         std::fill(mTotalBiasGradients[i].begin(), mTotalBiasGradients[i].end(), 0.0f);
     }
 }
 
-void Trainer::feedForward(const std::vector<float>& inputs) {
+void TrainingWorkspace::feedForward(const std::vector<float>& inputs) {
     mActivations[0] = inputs;
     const std::vector<Layer>& layers = mNet->getLayers();
     layers[0].fire(mActivations[0], mLogitsBuffer, mActivations[1]);
@@ -91,19 +91,19 @@ void Trainer::feedForward(const std::vector<float>& inputs) {
     }
 }
 
-const std::vector<float>& Trainer::getOutputs() {
+const std::vector<float>& TrainingWorkspace::getOutputs() {
     return mActivations.back();
 }
 
-std::vector<std::vector<float>>& Trainer::getTotalWeightGradients() {
+std::vector<std::vector<float>>& TrainingWorkspace::getTotalWeightGradients() {
     return mTotalWeightGradients;
 }
 
-std::vector<std::vector<float>>& Trainer::getTotalBiasGradients() {
+std::vector<std::vector<float>>& TrainingWorkspace::getTotalBiasGradients() {
     return mTotalBiasGradients;
 }
 
-std::vector<double> Trainer::getLayerGradientNormsSquared() const {
+std::vector<double> TrainingWorkspace::getLayerGradientNormsSquared() const {
     std::vector<double> ret;
     for (size_t l = 0; l < mTotalWeightGradients.size(); l++) {
         double layerSum = 0.0;

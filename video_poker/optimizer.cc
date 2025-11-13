@@ -1,7 +1,7 @@
 #include "optimizer.h"
 
-void SDGOptimizer::step(NeuralNet* net, Trainer& trainer, float learningRate) {
-    net->update(learningRate, trainer.getTotalWeightGradients(), trainer.getTotalBiasGradients());
+void SDGOptimizer::step(NeuralNet* net, TrainingWorkspace& workspace, float learningRate) {
+    net->update(learningRate, workspace.getTotalWeightGradients(), workspace.getTotalBiasGradients());
 }
 
 MomentumOptimizer::MomentumOptimizer(NeuralNet* net, float beta) : mBeta(beta) {
@@ -14,9 +14,9 @@ MomentumOptimizer::MomentumOptimizer(NeuralNet* net, float beta) : mBeta(beta) {
     }
 }
 
-void MomentumOptimizer::step(NeuralNet* net, Trainer& trainer, float learningRate) {
-    const std::vector<std::vector<float>>& weightGradients = trainer.getTotalWeightGradients();
-    const std::vector<std::vector<float>>& biasGradients = trainer.getTotalBiasGradients();
+void MomentumOptimizer::step(NeuralNet* net, TrainingWorkspace& workspace, float learningRate) {
+    const std::vector<std::vector<float>>& weightGradients = workspace.getTotalWeightGradients();
+    const std::vector<std::vector<float>>& biasGradients = workspace.getTotalBiasGradients();
     for (size_t l = 0; l < weightGradients.size(); l++) {
         for (size_t w = 0; w < weightGradients[l].size(); w++) {
             mWeightVelocity[l][w] = (mBeta * mWeightVelocity[l][w]) + weightGradients[l][w];

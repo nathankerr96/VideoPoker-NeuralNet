@@ -4,7 +4,6 @@
 #include "poker.h"
 #include "decision.h"
 #include "baseline.h"
-#include "trainer.h"
 #include "hyperparams.h"
 
 #include <random>

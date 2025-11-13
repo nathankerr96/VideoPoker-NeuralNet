@@ -4,14 +4,15 @@
 
 #include <vector>
 
-class Trainer {
+// TODO: Extract Inference Workspace
+class TrainingWorkspace {
 public:
-    Trainer(NeuralNet* net);
+    TrainingWorkspace(NeuralNet* net);
     std::vector<double> getLayerGradientNormsSquared() const;
 
     void feedForward(const std::vector<float>& inputs);
     void backpropagate(const std::vector<float>& errors);
-    void aggregate(Trainer& other);
+    void aggregate(TrainingWorkspace& other);
     void batch(int batchSize);
     void reset();
     const std::vector<float>& getOutputs();

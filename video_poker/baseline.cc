@@ -22,19 +22,19 @@ void RunningAverageBaseline::train(int score) {
 
 CriticNetworkBaseline::CriticNetworkBaseline(NeuralNet* net, float learningRate, std::unique_ptr<Optimizer> optimizer)
         : mNet(net), 
-          mTrainer(net),
+          mTrainingWorkspace(net),
           mLearningRate(learningRate),
           mOptimizer(std::move(optimizer)) {}
 
 float CriticNetworkBaseline::predict(const std::vector<float>& inputs) {
-    mTrainer.feedForward(inputs);
-    mPrediction = mTrainer.getOutputs()[0];
+    mTrainingWorkspace.feedForward(inputs);
+    mPrediction = mTrainingWorkspace.getOutputs()[0];
     return mPrediction;
 }
 
 void CriticNetworkBaseline::train(int score) {
     float error = mPrediction - score;
-    mTrainer.backpropagate({error});
+    mTrainingWorkspace.backpropagate({error});
 }
 
 void CriticNetworkBaseline::update(std::vector<std::unique_ptr<BaselineCalculator>>& otherCalcs, int batchSize) {
@@ -45,11 +45,11 @@ void CriticNetworkBaseline::update(std::vector<std::unique_ptr<BaselineCalculato
             std::cerr << "Received wrong baseline calculator type in Critic Network Update" << std::endl;
             throw std::bad_cast();
         }
-        mTrainer.aggregate(otherCriticBaseline->mTrainer);
-        otherCriticBaseline->mTrainer.reset();
+        mTrainingWorkspace.aggregate(otherCriticBaseline->mTrainingWorkspace);
+        otherCriticBaseline->mTrainingWorkspace.reset();
     }
-    mTrainer.batch(batchSize);
-    mOptimizer->step(mNet, mTrainer, mLearningRate);
+    mTrainingWorkspace.batch(batchSize);
+    mOptimizer->step(mNet, mTrainingWorkspace, mLearningRate);
     // mNet->update(mLearningRate, mTrainer.getTotalWeightGradients(), mTrainer.getTotalBiasGradients());
-    mTrainer.reset();
+    mTrainingWorkspace.reset();
 }
