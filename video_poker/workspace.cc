@@ -2,22 +2,49 @@
 
 #include <vector>
 
-TrainingWorkspace::TrainingWorkspace(NeuralNet* net) : mNet(net) {
+InferenceWorkspace::InferenceWorkspace(NeuralNet* net) : mNet(net) {
     const std::vector<Layer>& layers = net->getLayers();
-    mTotalWeightGradients.resize(layers.size());
-    mTotalBiasGradients.resize(layers.size());
     mActivations.resize(layers.size()+1); // +1 since the first "activation" is the input.
     mActivations[0].resize(layers[0].getNumInputs());
     int maxNeurons = 0;
     for (size_t i = 0; i < layers.size(); i++) {
-        mTotalWeightGradients[i].resize(layers[i].getNumInputs()*layers[i].getNumNeurons(), 0.0f);
-        mTotalBiasGradients[i].resize(layers[i].getNumNeurons(), 0.0f);
         mActivations[i+1].resize(layers[i].getNumNeurons());
         if (layers[i].getNumNeurons() > maxNeurons) {
             maxNeurons = layers[i].getNumNeurons();
         }
     }
     mLogitsBuffer.resize(maxNeurons, 0.0f);
+}
+
+void InferenceWorkspace::feedForward(const std::vector<float>& inputs) {
+    mActivations[0] = inputs;
+    const std::vector<Layer>& layers = mNet->getLayers();
+    layers[0].fire(mActivations[0], mLogitsBuffer, mActivations[1]);
+    for (size_t i = 1; i < layers.size(); i++) {
+        layers[i].fire(mActivations[i], mLogitsBuffer, mActivations[i+1]);
+    }
+}
+
+const std::vector<float>& InferenceWorkspace::getOutputs() const {
+    return mActivations.back();
+}
+
+const std::vector<std::vector<float>>& InferenceWorkspace::getActivations() const {
+    return mActivations;
+}
+
+TrainingWorkspace::TrainingWorkspace(NeuralNet* net) : mNet(net), mInferenceWorkspace(net) {
+    const std::vector<Layer>& layers = net->getLayers();
+    mTotalWeightGradients.resize(layers.size());
+    mTotalBiasGradients.resize(layers.size());
+    int maxNeurons = 0;
+    for (size_t i = 0; i < layers.size(); i++) {
+        mTotalWeightGradients[i].resize(layers[i].getNumInputs()*layers[i].getNumNeurons(), 0.0f);
+        mTotalBiasGradients[i].resize(layers[i].getNumNeurons(), 0.0f);
+        if (layers[i].getNumNeurons() > maxNeurons) {
+            maxNeurons = layers[i].getNumNeurons();
+        }
+    }
     mBlameBufferA.resize(maxNeurons, 0.0f);
     mBlameBufferB.resize(maxNeurons, 0.0f);
     mDeltaBuffer.resize(maxNeurons, 0.0f);
@@ -29,9 +56,10 @@ void TrainingWorkspace::backpropagate(const std::vector<float>& errors) {
     std::vector<float>* downstreamGradient = &mBlameBufferA; 
     const std::vector<Layer>& layers = mNet->getLayers();
     int last = layers.size() - 1;
+    const std::vector<std::vector<float>>& activations = mInferenceWorkspace.getActivations();
     layers[last].backpropagate(errors, 
-                               mActivations[last],
-                               mActivations[last+1],
+                               activations[last],
+                               activations[last+1],
                                mDeltaBuffer, 
                                mOutputDerivativesBuffer, 
                                mTotalWeightGradients[last], 
@@ -41,8 +69,8 @@ void TrainingWorkspace::backpropagate(const std::vector<float>& errors) {
         upstreamGradient = downstreamGradient;
         downstreamGradient = (upstreamGradient == &mBlameBufferA ? &mBlameBufferB : &mBlameBufferA);
         layers[i].backpropagate(*upstreamGradient, 
-                                mActivations[i],
-                                mActivations[i+1],
+                                activations[i],
+                                activations[i+1],
                                 mDeltaBuffer, 
                                 mOutputDerivativesBuffer, 
                                 mTotalWeightGradients[i], 
@@ -82,17 +110,13 @@ void TrainingWorkspace::reset() {
     }
 }
 
+
 void TrainingWorkspace::feedForward(const std::vector<float>& inputs) {
-    mActivations[0] = inputs;
-    const std::vector<Layer>& layers = mNet->getLayers();
-    layers[0].fire(mActivations[0], mLogitsBuffer, mActivations[1]);
-    for (size_t i = 1; i < layers.size(); i++) {
-        layers[i].fire(mActivations[i], mLogitsBuffer, mActivations[i+1]);
-    }
+    mInferenceWorkspace.feedForward(inputs);
 }
 
-const std::vector<float>& TrainingWorkspace::getOutputs() {
-    return mActivations.back();
+const std::vector<float>& TrainingWorkspace::getOutputs() const {
+    return mInferenceWorkspace.getOutputs();
 }
 
 std::vector<std::vector<float>>& TrainingWorkspace::getTotalWeightGradients() {

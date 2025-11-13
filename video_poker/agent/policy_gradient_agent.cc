@@ -137,9 +137,9 @@ void PolicyGradientAgent::logProgress(TrainingWorkspace& t, BaselineCalculator* 
 }
 
 std::vector<float> PolicyGradientAgent::predict(const std::vector<float>& input) const {
-    TrainingWorkspace t(mNet.get());
-    t.feedForward(input);
-    return t.getOutputs();
+    InferenceWorkspace workspace(mNet.get()); // TODO: Reuse
+    workspace.feedForward(input);
+    return workspace.getOutputs();
 }
 
 void PolicyGradientAgent::train(const std::atomic<bool>& stopSignal) {
