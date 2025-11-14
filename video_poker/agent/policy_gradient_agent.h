@@ -45,6 +45,6 @@ private:
 
     float calculateEntropy(const std::vector<float>& policy);
     // Should be called after gradient aggregation but before reset! (Else gradient norm == 0)
-    void logProgress(TrainingWorkspace& t, BaselineCalculator* baselineCalc);
-    void logAndPrintNorms(const TrainingWorkspace& trainingWorkspace);
+    void logProgress(TrainingWorkspace& workspace, BaselineCalculator* baselineCalc);
+    void logAndPrintNorms(const TrainingWorkspace& workspace);
 };

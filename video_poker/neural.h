@@ -5,6 +5,9 @@
 #include <functional>
 #include <string>
 
+class InferenceWorkspace;
+class TrainingWorkspace;
+
 enum class Activation {
     SIGMOID,
     RELU,
@@ -52,7 +55,8 @@ struct LayerSpecification {
 class NeuralNet {
 public:
     NeuralNet(const std::vector<LayerSpecification>& topology);
-    void feedForward(const std::vector<float>& inputs) const;
+    void feedforward(const std::vector<float>& inputs, InferenceWorkspace& workspace) const;
+    void backpropagate(const std::vector<float>& errors, TrainingWorkspace& workspace) const;
     void update(float learningRate,
         const std::vector<std::vector<float>>& weightGradients,
         const std::vector<std::vector<float>>& biasGradients);

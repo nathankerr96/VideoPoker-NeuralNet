@@ -16,15 +16,6 @@ InferenceWorkspace::InferenceWorkspace(NeuralNet* net) : mNet(net) {
     mLogitsBuffer.resize(maxNeurons, 0.0f);
 }
 
-void InferenceWorkspace::feedForward(const std::vector<float>& inputs) {
-    mActivations[0] = inputs;
-    const std::vector<Layer>& layers = mNet->getLayers();
-    layers[0].fire(mActivations[0], mLogitsBuffer, mActivations[1]);
-    for (size_t i = 1; i < layers.size(); i++) {
-        layers[i].fire(mActivations[i], mLogitsBuffer, mActivations[i+1]);
-    }
-}
-
 const std::vector<float>& InferenceWorkspace::getOutputs() const {
     return mActivations.back();
 }
@@ -49,34 +40,6 @@ TrainingWorkspace::TrainingWorkspace(NeuralNet* net) : mNet(net), mInferenceWork
     mBlameBufferB.resize(maxNeurons, 0.0f);
     mDeltaBuffer.resize(maxNeurons, 0.0f);
     mOutputDerivativesBuffer.resize(maxNeurons, 0.0f);
-}
-
-void TrainingWorkspace::backpropagate(const std::vector<float>& errors) {
-    std::vector<float>* upstreamGradient = nullptr;
-    std::vector<float>* downstreamGradient = &mBlameBufferA; 
-    const std::vector<Layer>& layers = mNet->getLayers();
-    int last = layers.size() - 1;
-    const std::vector<std::vector<float>>& activations = mInferenceWorkspace.getActivations();
-    layers[last].backpropagate(errors, 
-                               activations[last],
-                               activations[last+1],
-                               mDeltaBuffer, 
-                               mOutputDerivativesBuffer, 
-                               mTotalWeightGradients[last], 
-                               mTotalBiasGradients[last], 
-                               *downstreamGradient);
-    for (int i = last-1; i >= 0; i--) {
-        upstreamGradient = downstreamGradient;
-        downstreamGradient = (upstreamGradient == &mBlameBufferA ? &mBlameBufferB : &mBlameBufferA);
-        layers[i].backpropagate(*upstreamGradient, 
-                                activations[i],
-                                activations[i+1],
-                                mDeltaBuffer, 
-                                mOutputDerivativesBuffer, 
-                                mTotalWeightGradients[i], 
-                                mTotalBiasGradients[i], 
-                                *downstreamGradient);
-    }
 }
 
 void TrainingWorkspace::aggregate(TrainingWorkspace& other) {
@@ -110,10 +73,6 @@ void TrainingWorkspace::reset() {
     }
 }
 
-
-void TrainingWorkspace::feedForward(const std::vector<float>& inputs) {
-    mInferenceWorkspace.feedForward(inputs);
-}
 
 const std::vector<float>& TrainingWorkspace::getOutputs() const {
     return mInferenceWorkspace.getOutputs();

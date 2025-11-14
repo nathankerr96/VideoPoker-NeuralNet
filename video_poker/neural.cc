@@ -1,5 +1,6 @@
 #include "neural.h"
 #include "activations.h"
+#include "workspace.h"
 
 #include <random>
 #include <memory>
@@ -121,6 +122,14 @@ double Layer::getWeightNormSquared() const {
     return sum;
 }
 
+int Layer::getNumInputs() const {
+    return mNumInputs;
+}
+
+int Layer::getNumNeurons() const {
+    return mNumNeurons;
+}
+
 NeuralNet::NeuralNet(const std::vector<LayerSpecification>& topology) {
     for (size_t i = 1; i < topology.size(); i++) {
         mLayers.push_back(Layer(topology[i].numNeurons, 
@@ -129,15 +138,43 @@ NeuralNet::NeuralNet(const std::vector<LayerSpecification>& topology) {
     }
 }
 
-// void NeuralNet::feedForward(const std::vector<float>& inputs) const {
-//     mLayers[0].fire(inputs);
-//     for (size_t i = 1; i < mLayers.size(); i++) {
-//         mLayers[i].fire(mLayers[i-1].getOutputs());
-//     }
-// }
-
 const std::vector<Layer>& NeuralNet::getLayers() {
     return mLayers;
+}
+
+void NeuralNet::feedforward(const std::vector<float>& inputs, InferenceWorkspace& workspace) const {
+    workspace.mActivations[0] = inputs;
+    mLayers[0].fire(workspace.mActivations[0], workspace.mLogitsBuffer, workspace.mActivations[1]);
+    for (size_t i = 1; i < mLayers.size(); i++) {
+        mLayers[i].fire(workspace.mActivations[i], workspace.mLogitsBuffer, workspace.mActivations[i+1]);
+    }
+}
+
+void NeuralNet::backpropagate(const std::vector<float>& errors, TrainingWorkspace& workspace) const {
+    std::vector<float>* upstreamGradient = nullptr;
+    std::vector<float>* downstreamGradient = &workspace.mBlameBufferA; 
+    int last = mLayers.size() - 1;
+    const std::vector<std::vector<float>>& activations = workspace.mInferenceWorkspace.getActivations();
+    mLayers[last].backpropagate(errors, 
+                               activations[last],
+                               activations[last+1],
+                               workspace.mDeltaBuffer, 
+                               workspace.mOutputDerivativesBuffer, 
+                               workspace.mTotalWeightGradients[last], 
+                               workspace.mTotalBiasGradients[last], 
+                               *downstreamGradient);
+    for (int i = last-1; i >= 0; i--) {
+        upstreamGradient = downstreamGradient;
+        downstreamGradient = (upstreamGradient == &workspace.mBlameBufferA ? &workspace.mBlameBufferB : &workspace.mBlameBufferA);
+        mLayers[i].backpropagate(*upstreamGradient, 
+                                activations[i],
+                                activations[i+1],
+                                workspace.mDeltaBuffer, 
+                                workspace.mOutputDerivativesBuffer, 
+                                workspace.mTotalWeightGradients[i], 
+                                workspace.mTotalBiasGradients[i], 
+                                *downstreamGradient);
+    }
 }
 
 void NeuralNet::update(float learningRate, 
@@ -148,13 +185,6 @@ void NeuralNet::update(float learningRate,
     }
 }
 
-int Layer::getNumInputs() const {
-    return mNumInputs;
-}
-
-int Layer::getNumNeurons() const {
-    return mNumNeurons;
-}
 
 std::vector<double> NeuralNet::getLayerWeightNormsSquared() const {
     std::vector<double> ret;

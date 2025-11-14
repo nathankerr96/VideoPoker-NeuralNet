@@ -99,7 +99,7 @@ float PolicyGradientAgent::calculateEntropy(const std::vector<float>& policy) {
 
 // TODO: These params should be made const, either by directly referencing the underlying NeuralNet or
 // adding const equivalent functions (default feedforward saves activations for backprop).
-void PolicyGradientAgent::logProgress(TrainingWorkspace& t, BaselineCalculator* baselineCalc) {
+void PolicyGradientAgent::logProgress(TrainingWorkspace& workspace, BaselineCalculator* baselineCalc) {
     float averageTotalScore = float(mTotalScore) / mIterations;
     std::cout << "Thread: " << std::this_thread::get_id() << "--- ";
     std::cout << "Batches: " << mNumBatches << ", Hands: " << mIterations << ", Average Score: " << averageTotalScore << std::endl;
@@ -114,9 +114,9 @@ void PolicyGradientAgent::logProgress(TrainingWorkspace& t, BaselineCalculator* 
     std::vector<float> input = translateHand(h);
     float baseline = baselineCalc->predict(input);
     std::cout << "Baseline: " << baseline << std::endl;
-    t.feedForward(input);
-    const std::vector<float>& output = t.getOutputs();
-    std::cout << "Outputs: " << t.getOutputs() << std::endl;
+    mNet->feedforward(input, workspace.mInferenceWorkspace);
+    const std::vector<float>& output = workspace.getOutputs();
+    std::cout << "Outputs: " << output << std::endl;
     std::cout << "Entropy: " << calculateEntropy(output) << std::endl;
     std::vector<bool> exchanges = mDiscardStrategy->selectAction(output, mRng, true);
     std::cout << "Prediction: " << exchanges << std::endl;
@@ -131,14 +131,14 @@ void PolicyGradientAgent::logProgress(TrainingWorkspace& t, BaselineCalculator* 
     mLogFile << averageTotalScore << ",";
     mLogFile << averageRecentScore << ",";
     mLogFile << averageRecentEntropy << ",";
-    logAndPrintNorms(t);
+    logAndPrintNorms(workspace);
     mLogFile << std::endl;
     std::cout << std::endl;
 }
 
 std::vector<float> PolicyGradientAgent::predict(const std::vector<float>& input) const {
     InferenceWorkspace workspace(mNet.get()); // TODO: Reuse
-    workspace.feedForward(input);
+    mNet->feedforward(input, workspace);
     return workspace.getOutputs();
 }
 
@@ -179,7 +179,7 @@ void PolicyGradientAgent::train(const std::atomic<bool>& stopSignal) {
                 Hand h = vp.deal();
                 std::vector<float> input = translateHand(h);
                 float baseline = baselineCalcs[workerId]->predict(input);
-                t.feedForward(input);
+                mNet->feedforward(input, t.mInferenceWorkspace);
                 const std::vector<float>& output = t.getOutputs();
                 std::vector<bool> exchanges = mDiscardStrategy->selectAction(output, mRngs[workerId], true);
                 Hand e = vp.exchange(exchanges);
@@ -200,7 +200,7 @@ void PolicyGradientAgent::train(const std::atomic<bool>& stopSignal) {
                         policyError[i] += entropyError[i];
                     }
                 }
-                t.backpropagate(policyError);
+                mNet->backpropagate(policyError, t);
             }
 
             barrier.arrive_and_wait(); // Runs completionStep once all threads arrive.
@@ -228,7 +228,7 @@ int PolicyGradientAgent::getNumTrainingIterations() const {
     return mIterations;
 }
 
-void PolicyGradientAgent::logAndPrintNorms(const TrainingWorkspace& TrainingWorkspace) {
+void PolicyGradientAgent::logAndPrintNorms(const TrainingWorkspace& workspace) {
     std::vector<double> weightNormsSquared = mNet->getLayerWeightNormsSquared();
     std::cout << "Weight Norms:" << std::endl;
     double totalWeightNormSquared = 0.0;
@@ -239,7 +239,7 @@ void PolicyGradientAgent::logAndPrintNorms(const TrainingWorkspace& TrainingWork
     double globalWeightNorm = std::sqrt(totalWeightNormSquared);
     std::cout << "Overall Weight Norm: " <<  globalWeightNorm << std::endl;
 
-    std::vector<double> gradientNormsSquared = TrainingWorkspace.getLayerGradientNormsSquared();
+    std::vector<double> gradientNormsSquared = workspace.getLayerGradientNormsSquared();
     std::cout << "Gradient Norms:" << std::endl;
     double totalGradientNormSquared = 0.0;
     for (size_t i = 0; i < gradientNormsSquared.size(); i++) {

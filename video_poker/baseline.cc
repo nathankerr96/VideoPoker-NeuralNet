@@ -27,14 +27,14 @@ CriticNetworkBaseline::CriticNetworkBaseline(NeuralNet* net, float learningRate,
           mOptimizer(std::move(optimizer)) {}
 
 float CriticNetworkBaseline::predict(const std::vector<float>& inputs) {
-    mTrainingWorkspace.feedForward(inputs);
+    mNet->feedforward(inputs, mTrainingWorkspace.mInferenceWorkspace);
     mPrediction = mTrainingWorkspace.getOutputs()[0];
     return mPrediction;
 }
 
 void CriticNetworkBaseline::train(int score) {
     float error = mPrediction - score;
-    mTrainingWorkspace.backpropagate({error});
+    mNet->backpropagate({error}, mTrainingWorkspace);
 }
 
 void CriticNetworkBaseline::update(std::vector<std::unique_ptr<BaselineCalculator>>& otherCalcs, int batchSize) {
