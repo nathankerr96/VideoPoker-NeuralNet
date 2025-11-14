@@ -20,9 +20,9 @@ void RunningAverageBaseline::train(int score) {
     mCount += 1;
 }
 
-CriticNetworkBaseline::CriticNetworkBaseline(NeuralNet* net, float learningRate, std::unique_ptr<Optimizer> optimizer)
+CriticNetworkBaseline::CriticNetworkBaseline(NeuralNet* net, const std::vector<LayerSpecification>& criticTopology, float learningRate, std::unique_ptr<Optimizer> optimizer)
         : mNet(net), 
-          mTrainingWorkspace(net),
+          mTrainingWorkspace(criticTopology),
           mLearningRate(learningRate),
           mOptimizer(std::move(optimizer)) {}
 

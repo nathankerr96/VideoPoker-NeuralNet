@@ -41,7 +41,7 @@ std::unique_ptr<BaselineCalculator> getCriticNetworkBaseline(NeuralNet* net, con
             optimizer = std::make_unique<MomentumOptimizer>(net, config.criticMomentumCoeff);
             break;
     }
-    return std::make_unique<CriticNetworkBaseline>(net, config.criticLearningRate, std::move(optimizer));
+    return std::make_unique<CriticNetworkBaseline>(net, config.criticTopology, config.criticLearningRate, std::move(optimizer));
 }
 
 int main() {

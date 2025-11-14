@@ -137,7 +137,7 @@ void PolicyGradientAgent::logProgress(TrainingWorkspace& workspace, BaselineCalc
 }
 
 std::vector<float> PolicyGradientAgent::predict(const std::vector<float>& input) const {
-    InferenceWorkspace workspace(mNet.get()); // TODO: Reuse
+    InferenceWorkspace workspace(mConfig.actorTopology); // TODO: Reuse
     mNet->feedforward(input, workspace);
     return workspace.getOutputs();
 }
@@ -145,7 +145,7 @@ std::vector<float> PolicyGradientAgent::predict(const std::vector<float>& input)
 void PolicyGradientAgent::train(const std::atomic<bool>& stopSignal) {
     auto trainingStartTime = std::chrono::steady_clock::now();
 
-    std::vector<TrainingWorkspace> trainingWorkspaces(mConfig.numWorkers, TrainingWorkspace(mNet.get()));
+    std::vector<TrainingWorkspace> trainingWorkspaces(mConfig.numWorkers, TrainingWorkspace(mConfig.actorTopology));
     std::vector<std::unique_ptr<BaselineCalculator>> baselineCalcs;
     baselineCalcs.reserve(mConfig.numWorkers);
     std::generate_n(std::back_inserter(baselineCalcs), mConfig.numWorkers, mBaselineFactory);

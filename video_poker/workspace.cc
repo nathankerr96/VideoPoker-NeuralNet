@@ -1,16 +1,17 @@
 #include "workspace.h"
 
+#include "neural.h"
+
 #include <vector>
 
-InferenceWorkspace::InferenceWorkspace(NeuralNet* net) : mNet(net) {
-    const std::vector<Layer>& layers = net->getLayers();
-    mActivations.resize(layers.size()+1); // +1 since the first "activation" is the input.
-    mActivations[0].resize(layers[0].getNumInputs());
+InferenceWorkspace::InferenceWorkspace(const std::vector<LayerSpecification>& topology) {
+    mActivations.resize(topology.size());
+    mActivations[0].resize(topology[0].numNeurons);
     int maxNeurons = 0;
-    for (size_t i = 0; i < layers.size(); i++) {
-        mActivations[i+1].resize(layers[i].getNumNeurons());
-        if (layers[i].getNumNeurons() > maxNeurons) {
-            maxNeurons = layers[i].getNumNeurons();
+    for (size_t i = 1; i < topology.size(); i++) {
+        mActivations[i].resize(topology[i].numNeurons);
+        if (topology[i].numNeurons > maxNeurons) {
+            maxNeurons = topology[i].numNeurons;
         }
     }
     mLogitsBuffer.resize(maxNeurons, 0.0f);
@@ -24,16 +25,15 @@ const std::vector<std::vector<float>>& InferenceWorkspace::getActivations() cons
     return mActivations;
 }
 
-TrainingWorkspace::TrainingWorkspace(NeuralNet* net) : mNet(net), mInferenceWorkspace(net) {
-    const std::vector<Layer>& layers = net->getLayers();
-    mTotalWeightGradients.resize(layers.size());
-    mTotalBiasGradients.resize(layers.size());
+TrainingWorkspace::TrainingWorkspace(const std::vector<LayerSpecification>& topology) : mInferenceWorkspace(topology) {
+    mTotalWeightGradients.resize(topology.size()-1);
+    mTotalBiasGradients.resize(topology.size()-1);
     int maxNeurons = 0;
-    for (size_t i = 0; i < layers.size(); i++) {
-        mTotalWeightGradients[i].resize(layers[i].getNumInputs()*layers[i].getNumNeurons(), 0.0f);
-        mTotalBiasGradients[i].resize(layers[i].getNumNeurons(), 0.0f);
-        if (layers[i].getNumNeurons() > maxNeurons) {
-            maxNeurons = layers[i].getNumNeurons();
+    for (size_t i = 1; i < topology.size(); i++) {
+        mTotalWeightGradients[i-1].resize(topology[i-1].numNeurons*topology[i].numNeurons, 0.0f);
+        mTotalBiasGradients[i-1].resize(topology[i].numNeurons, 0.0f);
+        if (topology[i].numNeurons > maxNeurons) {
+            maxNeurons = topology[i].numNeurons;
         }
     }
     mBlameBufferA.resize(maxNeurons, 0.0f);
@@ -67,7 +67,7 @@ void TrainingWorkspace::batch(int batchSize) {
 }
 
 void TrainingWorkspace::reset() {
-    for(size_t i = 0; i < mNet->getLayers().size(); i++) {
+    for(size_t i = 0; i < mTotalWeightGradients.size(); i++) {
         std::fill(mTotalWeightGradients[i].begin(), mTotalWeightGradients[i].end(), 0.0f);
         std::fill(mTotalBiasGradients[i].begin(), mTotalBiasGradients[i].end(), 0.0f);
     }

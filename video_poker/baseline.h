@@ -46,7 +46,7 @@ private:
 
 class CriticNetworkBaseline : public BaselineCalculator {
 public:
-    CriticNetworkBaseline(NeuralNet* net, float learningRate, std::unique_ptr<Optimizer> optimizer);
+    CriticNetworkBaseline(NeuralNet* net, const std::vector<LayerSpecification>& criticTopology, float learningRate, std::unique_ptr<Optimizer> optimizer);
     virtual float predict(const std::vector<float>& inputs) override;
     virtual void train(int score) override;
     // Aggregates gradients and updates underlying net. Must only be called from *one* calculator.
