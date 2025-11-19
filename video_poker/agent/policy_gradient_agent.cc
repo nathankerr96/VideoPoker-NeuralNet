@@ -114,7 +114,7 @@ void PolicyGradientAgent::logProgress(TrainingWorkspace& workspace, BaselineCalc
     std::vector<float> input = translateHand(h);
     float baseline = baselineCalc->predict(input);
     std::cout << "Baseline: " << baseline << std::endl;
-    mNet->feedforward(input, workspace.mInferenceWorkspace);
+    mNet->feedforward(input, workspace.getInferenceWorkspace());
     const std::vector<float>& output = workspace.getOutputs();
     std::cout << "Outputs: " << output << std::endl;
     std::cout << "Entropy: " << calculateEntropy(output) << std::endl;
@@ -179,7 +179,7 @@ void PolicyGradientAgent::train(const std::atomic<bool>& stopSignal) {
                 Hand h = vp.deal();
                 std::vector<float> input = translateHand(h);
                 float baseline = baselineCalcs[workerId]->predict(input);
-                mNet->feedforward(input, t.mInferenceWorkspace);
+                mNet->feedforward(input, t.getInferenceWorkspace());
                 const std::vector<float>& output = t.getOutputs();
                 std::vector<bool> exchanges = mDiscardStrategy->selectAction(output, mRngs[workerId], true);
                 Hand e = vp.exchange(exchanges);

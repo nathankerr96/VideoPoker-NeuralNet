@@ -5,26 +5,30 @@
 struct LayerSpecification;
 
 class InferenceWorkspace {
+    friend class TrainingWorkspace;
+    friend class NeuralNet;
 public:
     InferenceWorkspace(const std::vector<LayerSpecification>& topology);
     const std::vector<float>& getOutputs() const;
-    const std::vector<std::vector<float>>& getActivations() const;
-// TODO: private:
+private:
     std::vector<float> mLogitsBuffer;
     std::vector<std::vector<float>> mActivations;
 };
 
 class TrainingWorkspace {
+    friend class NeuralNet;
 public:
     TrainingWorkspace(const std::vector<LayerSpecification>& topology);
+    InferenceWorkspace& getInferenceWorkspace();
     std::vector<double> getLayerGradientNormsSquared() const;
     const std::vector<float>& getOutputs() const;
+    const std::vector<std::vector<float>>& getActivations() const;
     void aggregate(TrainingWorkspace& other);
     void batch(int batchSize);
     void reset();
     std::vector<std::vector<float>>& getTotalWeightGradients();
     std::vector<std::vector<float>>& getTotalBiasGradients();
-// TODO private:
+private:
     InferenceWorkspace mInferenceWorkspace;
     std::vector<std::vector<float>> mTotalWeightGradients;
     std::vector<std::vector<float>> mTotalBiasGradients;

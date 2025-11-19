@@ -154,7 +154,7 @@ void NeuralNet::backpropagate(const std::vector<float>& errors, TrainingWorkspac
     std::vector<float>* upstreamGradient = nullptr;
     std::vector<float>* downstreamGradient = &workspace.mBlameBufferA; 
     int last = mLayers.size() - 1;
-    const std::vector<std::vector<float>>& activations = workspace.mInferenceWorkspace.getActivations();
+    const std::vector<std::vector<float>>& activations = workspace.getActivations();
     mLayers[last].backpropagate(errors, 
                                activations[last],
                                activations[last+1],

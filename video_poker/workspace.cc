@@ -21,10 +21,6 @@ const std::vector<float>& InferenceWorkspace::getOutputs() const {
     return mActivations.back();
 }
 
-const std::vector<std::vector<float>>& InferenceWorkspace::getActivations() const {
-    return mActivations;
-}
-
 TrainingWorkspace::TrainingWorkspace(const std::vector<LayerSpecification>& topology) : mInferenceWorkspace(topology) {
     mTotalWeightGradients.resize(topology.size()-1);
     mTotalBiasGradients.resize(topology.size()-1);
@@ -73,6 +69,13 @@ void TrainingWorkspace::reset() {
     }
 }
 
+const std::vector<std::vector<float>>& TrainingWorkspace::getActivations() const {
+    return mInferenceWorkspace.mActivations;
+}
+
+InferenceWorkspace& TrainingWorkspace::getInferenceWorkspace() {
+    return mInferenceWorkspace;
+}
 
 const std::vector<float>& TrainingWorkspace::getOutputs() const {
     return mInferenceWorkspace.getOutputs();
