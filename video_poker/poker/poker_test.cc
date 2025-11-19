@@ -112,7 +112,6 @@ void run_tests() {
     std::cout << "All tests passed!" << std::endl;
 }
 
-int main() {
+void mainPokerTest() {
     run_tests();
-    return 0;
 }

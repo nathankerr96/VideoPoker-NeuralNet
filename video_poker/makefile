@@ -9,27 +9,42 @@ BINDIR = bin
 default: $(TARGET)
 all: default
 
-APP_SOURCES = $(filter-out $(shell find . -name '*_test.cc'), $(shell find . -name '*.cc'))
-APP_OBJECTS = $(patsubst %.cc, $(BINDIR)/%.o, $(APP_SOURCES))
-
+# --- Source File Definitions ---
+ALL_SOURCES = $(shell find . -name '*.cc')
 HEADERS = $(shell find . -name '*.h')
 
+# --- Application Build ---
+# Filter out test files from all sources
+APP_SOURCES = $(filter-out $(shell find . -name '*_test.cc') ./main_test.cc, $(ALL_SOURCES))
+APP_OBJECTS = $(patsubst %.cc, $(BINDIR)/%.o, $(APP_SOURCES))
+
+# --- Test Build ---
+TEST_TARGET = $(BINDIR)/test.out
+# Get all _test.cc files
+TEST_FILES = $(filter $(shell find . -name '*_test.cc'), $(ALL_SOURCES))
+# App sources needed for tests (all app .cc files except main.cc)
+TEST_APP_SOURCES = $(filter-out ./main.cc, $(APP_SOURCES))
+# All object files needed for the test executable
+TEST_OBJECTS = $(patsubst %.cc, $(BINDIR)/%.o, ./main_test.cc $(TEST_FILES) $(TEST_APP_SOURCES))
+
+# --- Generic Build Rules ---
 $(BINDIR)/%.o: %.cc $(HEADERS)
 	@mkdir -p $(dir $@)
 	$(CC) $(CFLAGS) -c $< -o $@
 
+# --- Target-specific Rules ---
 $(TARGET): $(APP_OBJECTS)
-	$(CC) $(APP_OBJECTS) -Wall $(LIBS) -o $(BINDIR)/$@
+	$(CC) $^ -Wall $(LIBS) -o $(BINDIR)/$@
 
-POKER_TEST_RUNNER = $(BINDIR)/poker_test_runner
+test: $(TEST_TARGET)
+	@echo "Running tests..."
+	@$(TEST_TARGET)
 
-test: test_poker
+$(TEST_TARGET): $(TEST_OBJECTS)
+	$(CC) $^ -Wall $(LIBS) -o $@
 
-test_poker:
-	$(CC) $(CFLAGS) -o $(POKER_TEST_RUNNER) poker.cc poker_test.cc
-	$(POKER_TEST_RUNNER)
-
-LINT_SOURCES = $(shell find . -name '*.cc')
+# --- Maintenance Rules ---
+LINT_SOURCES = $(ALL_SOURCES)
 
 lint:
 	@echo "Running clang-tidy on all source files..."
@@ -39,6 +54,6 @@ lint:
 	done
 
 clean:
-	-rm  $(BINDIR)/*.o
-	-rm  $(BINDIR)/$(TARGET)
-	-rm  $(BINDIR)/poker_test_runner
+	-rm -f $(BINDIR)/*.o
+	-rm -f $(BINDIR)/$(TARGET)
+	-rm -f $(TEST_TARGET)
