@@ -142,12 +142,13 @@ const std::vector<Layer>& NeuralNet::getLayers() {
     return mLayers;
 }
 
-void NeuralNet::feedforward(const std::vector<float>& inputs, InferenceWorkspace& workspace) const {
+const std::vector<float>& NeuralNet::feedforward(const std::vector<float>& inputs, InferenceWorkspace& workspace) const {
     workspace.mActivations[0] = inputs;
     mLayers[0].fire(workspace.mActivations[0], workspace.mLogitsBuffer, workspace.mActivations[1]);
     for (size_t i = 1; i < mLayers.size(); i++) {
         mLayers[i].fire(workspace.mActivations[i], workspace.mLogitsBuffer, workspace.mActivations[i+1]);
     }
+    return workspace.mActivations.back();
 }
 
 void NeuralNet::backpropagate(const std::vector<float>& errors, TrainingWorkspace& workspace) const {

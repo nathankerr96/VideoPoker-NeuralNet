@@ -18,7 +18,7 @@ class BaseAgent {
 public:
     virtual ~BaseAgent() = default;
     virtual void train(const std::atomic<bool>& stopSignal) = 0;
-    virtual std::vector<float> predict(const std::vector<float>& input) const = 0;
+    virtual const std::vector<float>& predict(const std::vector<float>& input) const = 0;
     void randomEval(int iterations, std::mt19937& rng) const;
     void targetedEval(std::mt19937& rng) const;
 protected:

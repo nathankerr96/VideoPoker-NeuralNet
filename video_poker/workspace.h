@@ -9,7 +9,6 @@ class InferenceWorkspace {
     friend class NeuralNet;
 public:
     InferenceWorkspace(const std::vector<LayerSpecification>& topology);
-    const std::vector<float>& getOutputs() const;
 private:
     std::vector<float> mLogitsBuffer;
     std::vector<std::vector<float>> mActivations;
@@ -21,7 +20,6 @@ public:
     TrainingWorkspace(const std::vector<LayerSpecification>& topology);
     InferenceWorkspace& getInferenceWorkspace();
     std::vector<double> getLayerGradientNormsSquared() const;
-    const std::vector<float>& getOutputs() const;
     const std::vector<std::vector<float>>& getActivations() const;
     void aggregate(TrainingWorkspace& other);
     void batch(int batchSize);

@@ -55,7 +55,7 @@ struct LayerSpecification {
 class NeuralNet {
 public:
     NeuralNet(const std::vector<LayerSpecification>& topology);
-    void feedforward(const std::vector<float>& inputs, InferenceWorkspace& workspace) const;
+    const std::vector<float>& feedforward(const std::vector<float>& inputs, InferenceWorkspace& workspace) const;
     void backpropagate(const std::vector<float>& errors, TrainingWorkspace& workspace) const;
     void update(float learningRate,
         const std::vector<std::vector<float>>& weightGradients,

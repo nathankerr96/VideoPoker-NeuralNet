@@ -27,8 +27,7 @@ CriticNetworkBaseline::CriticNetworkBaseline(NeuralNet* net, const std::vector<L
           mOptimizer(std::move(optimizer)) {}
 
 float CriticNetworkBaseline::predict(const std::vector<float>& inputs) {
-    mNet->feedforward(inputs, mTrainingWorkspace.getInferenceWorkspace());
-    mPrediction = mTrainingWorkspace.getOutputs()[0];
+    mPrediction = mNet->feedforward(inputs, mTrainingWorkspace.getInferenceWorkspace())[0];
     return mPrediction;
 }
 

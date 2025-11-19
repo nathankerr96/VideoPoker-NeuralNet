@@ -17,10 +17,6 @@ InferenceWorkspace::InferenceWorkspace(const std::vector<LayerSpecification>& to
     mLogitsBuffer.resize(maxNeurons, 0.0f);
 }
 
-const std::vector<float>& InferenceWorkspace::getOutputs() const {
-    return mActivations.back();
-}
-
 TrainingWorkspace::TrainingWorkspace(const std::vector<LayerSpecification>& topology) : mInferenceWorkspace(topology) {
     mTotalWeightGradients.resize(topology.size()-1);
     mTotalBiasGradients.resize(topology.size()-1);
@@ -75,10 +71,6 @@ const std::vector<std::vector<float>>& TrainingWorkspace::getActivations() const
 
 InferenceWorkspace& TrainingWorkspace::getInferenceWorkspace() {
     return mInferenceWorkspace;
-}
-
-const std::vector<float>& TrainingWorkspace::getOutputs() const {
-    return mInferenceWorkspace.getOutputs();
 }
 
 std::vector<std::vector<float>>& TrainingWorkspace::getTotalWeightGradients() {
