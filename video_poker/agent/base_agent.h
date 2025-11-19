@@ -1,7 +1,7 @@
 #pragma once
 
 #include "neural.h"
-#include "poker.h"
+#include "poker/poker.h"
 #include "decision.h"
 #include "baseline.h"
 #include "hyperparams.h"

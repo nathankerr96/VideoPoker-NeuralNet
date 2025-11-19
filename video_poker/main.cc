@@ -1,6 +1,6 @@
 #include "neural.h"
 #include "activations.h"
-#include "poker.h"
+#include "poker/poker.h"
 #include "agent/policy_gradient_agent.h"
 #include "hyperparams.h"
 

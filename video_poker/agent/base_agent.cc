@@ -1,7 +1,7 @@
 #include "base_agent.h"
 
 #include "neural.h"
-#include "poker.h"
+#include "poker/poker.h"
 #include "hyperparams.h"
 
 #include <random>
